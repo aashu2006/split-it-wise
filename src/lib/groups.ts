@@ -1,0 +1,157 @@
+import {
+    collection,
+    doc,
+    getDoc,
+    getDocs,
+    setDoc,
+    updateDoc,
+    deleteDoc,
+    query,
+    where,
+    arrayUnion,
+    arrayRemove,
+    serverTimestamp,
+    Timestamp,
+} from "firebase/firestore";
+import { db } from "./firebase";
+import { Group } from "@/types";
+
+/**
+ * Create a new group
+ * @param name - Group name
+ * @param adminId - User ID of the creator (becomes admin)
+ * @returns Group ID
+ */
+export const createGroup = async (name: string, adminId: string): Promise<string> => {
+    const groupRef = doc(collection(db, "groups"));
+    const groupId = groupRef.id;
+
+    await setDoc(groupRef, {
+        name,
+        adminId,
+        members: [adminId], // Creator is automatically a member
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+    });
+
+    return groupId;
+};
+
+/**
+ * Get all groups where user is a member
+ * @param userId - User ID
+ * @returns Array of groups
+ */
+export const getUserGroups = async (userId: string): Promise<Group[]> => {
+    const groupsRef = collection(db, "groups");
+    const q = query(groupsRef, where("members", "array-contains", userId));
+    const snapshot = await getDocs(q);
+
+    return snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+    })) as Group[];
+};
+
+/**
+ * Get a single group by ID
+ * @param groupId - Group ID
+ * @returns Group or null if not found
+ */
+export const getGroup = async (groupId: string): Promise<Group | null> => {
+    const groupRef = doc(db, "groups", groupId);
+    const snapshot = await getDoc(groupRef);
+
+    if (!snapshot.exists()) {
+        return null;
+    }
+
+    return {
+        id: snapshot.id,
+        ...snapshot.data(),
+    } as Group;
+};
+
+/**
+ * Add a user to a group
+ * @param groupId - Group ID
+ * @param userId - User ID to add
+ */
+export const addMemberToGroup = async (groupId: string, userId: string): Promise<void> => {
+    const groupRef = doc(db, "groups", groupId);
+    await updateDoc(groupRef, {
+        members: arrayUnion(userId),
+        updatedAt: serverTimestamp(),
+    });
+};
+
+/**
+ * Remove a member from a group (admin only)
+ * @param groupId - Group ID
+ * @param userId - User ID to remove
+ * @param requesterId - User ID making the request (must be admin)
+ */
+export const removeMemberFromGroup = async (
+    groupId: string,
+    userId: string,
+    requesterId: string
+): Promise<void> => {
+    const group = await getGroup(groupId);
+    if (!group) throw new Error("Group not found");
+    if (group.adminId !== requesterId) throw new Error("Only admin can remove members");
+    if (userId === group.adminId) throw new Error("Admin cannot be removed");
+
+    const groupRef = doc(db, "groups", groupId);
+    await updateDoc(groupRef, {
+        members: arrayRemove(userId),
+        updatedAt: serverTimestamp(),
+    });
+};
+
+/**
+ * Update group name (admin only)
+ * @param groupId - Group ID
+ * @param newName - New group name
+ * @param requesterId - User ID making the request (must be admin)
+ */
+export const updateGroupName = async (
+    groupId: string,
+    newName: string,
+    requesterId: string
+): Promise<void> => {
+    const group = await getGroup(groupId);
+    if (!group) throw new Error("Group not found");
+    if (group.adminId !== requesterId) throw new Error("Only admin can rename group");
+
+    const groupRef = doc(db, "groups", groupId);
+    await updateDoc(groupRef, {
+        name: newName,
+        updatedAt: serverTimestamp(),
+    });
+};
+
+/**
+ * Delete a group (admin only)
+ * @param groupId - Group ID
+ * @param requesterId - User ID making the request (must be admin)
+ */
+export const deleteGroup = async (groupId: string, requesterId: string): Promise<void> => {
+    const group = await getGroup(groupId);
+    if (!group) throw new Error("Group not found");
+    if (group.adminId !== requesterId) throw new Error("Only admin can delete group");
+
+    const groupRef = doc(db, "groups", groupId);
+    await deleteDoc(groupRef);
+};
+
+/**
+ * Check if user is a member of a group
+ * @param groupId - Group ID
+ * @param userId - User ID
+ * @returns true if user is a member
+ */
+export const isUserMember = async (groupId: string, userId: string): Promise<boolean> => {
+    const group = await getGroup(groupId);
+    if (!group) return false;
+    return group.members.includes(userId);
+};
