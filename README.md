@@ -3,7 +3,7 @@
 A simple, real-world **expense splitting web app** for students and friends.  
 Inspired by Splitwise, built with a focus on **clarity, speed, and actual usability**.
 
-🌐 **Live Demo:** https://split-it-wise.vercel.app
+ **Live Demo:** https://split-it-wise.vercel.app
 
 ---
 
