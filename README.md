@@ -1,36 +1,72 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Split-It-Wise 
 
-## Getting Started
+A simple, real-world **expense splitting web app** for students and friends.  
+Inspired by Splitwise, built with a focus on **clarity, speed, and actual usability**.
 
-First, run the development server:
+🌐 **Live Demo:** https://split-it-wise.vercel.app
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+##  Features
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+###  Authentication
+- Google Sign-In using Firebase Authentication
+- Secure and production-ready auth flow
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+###  Group Management
+- Create groups instantly
+- Invite friends via shareable links
+- Join groups with one click
+- Admin controls:
+  - Rename group
+  - Remove members
+  - Delete group
 
-## Learn More
+###  Expense Management
+- Add expenses in **INR (₹)**
+- Select who paid
+- Automatic **equal split** among members
+- Delete expenses (admin or creator only)
 
-To learn more about Next.js, take a look at the following resources:
+###  Balance Summary
+- Clear per-user balances
+- Shows:
+  - **“₹X lena hai”** (you should receive)
+  - **“₹X dena hai”** (you owe)
+- Real-time updates on every expense change
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+###  UI & UX
+- Mobile-first design
+- Clean, minimal layout
+- No unnecessary clutter — just what users need
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+##  Tech Stack
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **Frontend:** Next.js 14 (App Router), TypeScript
+- **Styling:** Tailwind CSS
+- **Authentication:** Firebase Google Auth
+- **Database:** Firebase Firestore
+- **Hosting:** Vercel
+- **State & Logic:** React hooks + Firestore real-time listeners
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+##  How It Works
+
+- Each **group** stores:
+  - Members
+  - Admin (creator)
+- Each **expense** stores:
+  - Amount
+  - Paid by
+  - Group ID
+- For each group:
+  - Total expenses are split equally
+  - Balance = `total paid − total share`
+- Balances recalculate automatically when data changes
+
+---
+
+Author: Akshat Patil ❤️
