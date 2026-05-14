@@ -64,7 +64,9 @@ export default function MembersList({
                                     </span>
                                 )}
                             </div>
-                            <div className="text-sm text-gray-600">{member.email}</div>
+                            {member.uid === currentUserId && (
+                                <div className="text-sm text-gray-600">{member.email}</div>
+                            )}
                         </div>
                     </div>
 
