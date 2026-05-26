@@ -75,8 +75,7 @@ export default function GroupDashboard() {
             // Calculate balances
             const memberBalances = calculateMemberBalances(
                 groupExpenses,
-                memberDetails,
-                memberDetails.length
+                memberDetails
             );
             setBalances(memberBalances);
 
