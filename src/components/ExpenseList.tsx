@@ -66,7 +66,22 @@ export default function ExpenseList({
         <div className="space-y-3">
             {expenses.map((expense) => {
                 const payer = userMap.get(expense.paidBy);
-                const sharePerPerson = expense.amount / members.length;
+                const splitLabel =
+                    expense.splitType === "percentage"
+                        ? "By %"
+                        : expense.splitType === "exact"
+                        ? "Exact"
+                        : "Equal";
+
+                const splitCount = expense.splits
+                    ? Object.keys(expense.splits).length
+                    : members.length;
+
+                const splitSummary = expense.splits
+                    ? Object.values(expense.splits).every((v, _, arr) => v === arr[0])
+                        ? `₹${Object.values(expense.splits)[0]?.toFixed(2)} each`
+                        : `${splitCount} people`
+                    : `₹${(expense.amount / members.length).toFixed(2)} per person`;
 
                 return (
                     <div
@@ -88,7 +103,7 @@ export default function ExpenseList({
                                     {expense.paidBy === currentUserId && " (You)"}
                                 </div>
                                 <div className="text-xs text-gray-500 mt-1">
-                                    {formatDate(expense.createdAt)} • ₹{sharePerPerson.toFixed(2)} per person
+                                    {formatDate(expense.createdAt)} • {splitLabel} split • {splitSummary}
                                 </div>
                             </div>
 

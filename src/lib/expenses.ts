@@ -11,7 +11,7 @@ import {
     serverTimestamp,
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { Expense } from "@/types";
+import { Expense, SplitType } from "@/types";
 import { getGroup } from "./groups";
 
 /**
@@ -21,6 +21,8 @@ import { getGroup } from "./groups";
  * @param description - Expense description
  * @param paidBy - User ID who paid
  * @param createdBy - User ID who created the expense
+ * @param splitType - How the expense is split
+ * @param splits - Map of uid to amount owed
  * @returns Expense ID
  */
 export const addExpense = async (
@@ -28,7 +30,9 @@ export const addExpense = async (
     amount: number,
     description: string,
     paidBy: string,
-    createdBy: string
+    createdBy: string,
+    splitType: SplitType,
+    splits: { [uid: string]: number }
 ): Promise<string> => {
     // Validate amount
     if (amount <= 0) {
@@ -38,10 +42,12 @@ export const addExpense = async (
     const expensesRef = collection(db, "expenses");
     const docRef = await addDoc(expensesRef, {
         groupId,
-        amount: Number(amount.toFixed(2)), // Round to 2 decimals
+        amount: Number(amount.toFixed(2)),
         description: description.trim(),
         paidBy,
         createdBy,
+        splitType,
+        splits,
         createdAt: serverTimestamp(),
     });
 

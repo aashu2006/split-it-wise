@@ -17,6 +17,8 @@ export interface Group {
     updatedAt: Timestamp;
 }
 
+export type SplitType = "equal" | "exact" | "percentage";
+
 export interface Expense {
     id: string;
     groupId: string;
@@ -24,6 +26,8 @@ export interface Expense {
     description: string;
     paidBy: string; // User UID
     createdBy: string; // User UID
+    splitType: SplitType;
+    splits: { [uid: string]: number }; // uid -> amount owed
     createdAt: Timestamp;
 }
 
