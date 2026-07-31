@@ -69,4 +69,4 @@ Inspired by Splitwise, built with a focus on **clarity, speed, and actual usabil
 
 ---
 
-Author: Akshat Patil ❤️
+Author: Akshat Patil & Community ❤️
