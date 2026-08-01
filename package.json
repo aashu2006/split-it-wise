@@ -2,6 +2,7 @@
   "name": "split_it_wise",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "engines": {
     "node": ">=20.19.0"
   },
