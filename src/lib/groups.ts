@@ -11,7 +11,7 @@ import {
     arrayUnion,
     arrayRemove,
     serverTimestamp,
-    Timestamp,
+    writeBatch,
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { Group } from "@/types";
@@ -130,8 +130,20 @@ export const updateGroupName = async (
     });
 };
 
+// Firestore allows 500 writes per batch, but the rule for deleting someone
+// else's expense reads the group document, and a batched write gets only 20
+// document reads for the whole request. In practice those reads hit the same
+// group and are cached, so larger batches pass — 20 is the size that stays
+// within budget even if they aren't.
+const EXPENSE_DELETE_BATCH_SIZE = 20;
+
 /**
- * Delete a group (admin only)
+ * Delete a group and every expense in it (admin only)
+ *
+ * Expenses go first so that the group document still exists while the rules
+ * check whether the requester is its admin. If this fails partway through, the
+ * group survives and the delete can simply be retried.
+ *
  * @param groupId - Group ID
  * @param requesterId - User ID making the request (must be admin)
  */
@@ -139,6 +151,17 @@ export const deleteGroup = async (groupId: string, requesterId: string): Promise
     const group = await getGroup(groupId);
     if (!group) throw new Error("Group not found");
     if (group.adminId !== requesterId) throw new Error("Only admin can delete group");
+
+    const expensesRef = collection(db, "expenses");
+    const expenses = await getDocs(query(expensesRef, where("groupId", "==", groupId)));
+
+    for (let i = 0; i < expenses.docs.length; i += EXPENSE_DELETE_BATCH_SIZE) {
+        const batch = writeBatch(db);
+        expenses.docs
+            .slice(i, i + EXPENSE_DELETE_BATCH_SIZE)
+            .forEach((expense) => batch.delete(expense.ref));
+        await batch.commit();
+    }
 
     const groupRef = doc(db, "groups", groupId);
     await deleteDoc(groupRef);
