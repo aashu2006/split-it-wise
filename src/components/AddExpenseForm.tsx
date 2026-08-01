@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { addExpense } from "@/lib/expenses";
+import { splitEqually, splitByPercentage } from "@/lib/calculations";
 import { User, SplitType } from "@/types";
 
 interface AddExpenseFormProps {
@@ -57,6 +58,29 @@ export default function AddExpenseForm({
         setSelectedMembers(next);
     };
 
+    // Totals are compared as integers — 0.1 + 0.2 !== 0.3 in floating point, so
+    // a split that looks exact on screen can fail a naive equality check.
+    const amountPaise = Math.round((parseFloat(amount) || 0) * 100);
+
+    const getExactTotalPaise = (): number =>
+        Object.values(exactAmounts).reduce(
+            (total, value) => total + Math.round((parseFloat(value) || 0) * 100),
+            0
+        );
+
+    // Percentages are tracked in hundredths of a percent for the same reason.
+    const getPercentageTotalBasisPoints = (): number =>
+        Object.values(percentages).reduce(
+            (total, value) => total + Math.round((parseFloat(value) || 0) * 100),
+            0
+        );
+
+    const getExactTotal = (): number => getExactTotalPaise() / 100;
+    const getPercentageTotal = (): number => getPercentageTotalBasisPoints() / 100;
+
+    const exactTotalMatches = amountPaise > 0 && getExactTotalPaise() === amountPaise;
+    const percentageTotalMatches = getPercentageTotalBasisPoints() === 10000;
+
     const buildSplits = (): { [uid: string]: number } | null => {
         const amountNum = parseFloat(amount);
         if (!amount || isNaN(amountNum) || amountNum <= 0) return null;
@@ -64,65 +88,36 @@ export default function AddExpenseForm({
         if (splitType === "equal") {
             const selected = members.filter((m) => selectedMembers.has(m.uid));
             if (selected.length === 0) return null;
-            const share = Math.round((amountNum / selected.length) * 100) / 100;
-            const splits: { [uid: string]: number } = {};
-            selected.forEach((m) => {
-                splits[m.uid] = share;
-            });
-            return splits;
+            return splitEqually(amountNum, selected.map((m) => m.uid));
         }
 
         if (splitType === "exact") {
             const splits: { [uid: string]: number } = {};
-            let total = 0;
             for (const m of members) {
                 const val = parseFloat(exactAmounts[m.uid] || "0");
-                if (val < 0) return null;
+                if (isNaN(val) || val < 0) return null;
                 if (val > 0) {
                     splits[m.uid] = Math.round(val * 100) / 100;
-                    total += splits[m.uid];
                 }
             }
-            total = Math.round(total * 100) / 100;
-            if (total !== amountNum) return null;
             if (Object.keys(splits).length === 0) return null;
+            if (!exactTotalMatches) return null;
             return splits;
         }
 
         if (splitType === "percentage") {
-            const splits: { [uid: string]: number } = {};
-            let totalPct = 0;
+            const pcts: { [uid: string]: number } = {};
             for (const m of members) {
                 const pct = parseFloat(percentages[m.uid] || "0");
-                if (pct < 0) return null;
-                totalPct += pct;
-                if (pct > 0) {
-                    splits[m.uid] = Math.round((amountNum * pct) / 100 * 100) / 100;
-                }
+                if (isNaN(pct) || pct < 0) return null;
+                if (pct > 0) pcts[m.uid] = pct;
             }
-            totalPct = Math.round(totalPct * 100) / 100;
-            if (totalPct !== 100) return null;
-            if (Object.keys(splits).length === 0) return null;
-            return splits;
+            if (Object.keys(pcts).length === 0) return null;
+            if (!percentageTotalMatches) return null;
+            return splitByPercentage(amountNum, pcts);
         }
 
         return null;
-    };
-
-    const getExactTotal = (): number => {
-        let total = 0;
-        for (const uid of Object.keys(exactAmounts)) {
-            total += parseFloat(exactAmounts[uid] || "0") || 0;
-        }
-        return Math.round(total * 100) / 100;
-    };
-
-    const getPercentageTotal = (): number => {
-        let total = 0;
-        for (const uid of Object.keys(percentages)) {
-            total += parseFloat(percentages[uid] || "0") || 0;
-        }
-        return Math.round(total * 100) / 100;
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -146,7 +141,6 @@ export default function AddExpenseForm({
                 const diff = Math.round((amountNum - getExactTotal()) * 100) / 100;
                 setError(`Exact amounts must add up to ₹${amountNum.toFixed(2)}. Off by ₹${Math.abs(diff).toFixed(2)}`);
             } else if (splitType === "percentage") {
-                const diff = Math.round((100 - getPercentageTotal()) * 100) / 100;
                 setError(`Percentages must add up to 100%. Currently ${getPercentageTotal()}%`);
             } else {
                 setError("Please select at least one member for the split");
@@ -184,6 +178,13 @@ export default function AddExpenseForm({
     };
 
     const amountNum = parseFloat(amount) || 0;
+
+    // Preview the shares the way they will actually be stored, so the numbers
+    // on screen are the numbers that reach the ledger — including the odd paisa.
+    const equalPreview = splitEqually(
+        amountNum,
+        members.filter((m) => selectedMembers.has(m.uid)).map((m) => m.uid)
+    );
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -293,7 +294,7 @@ export default function AddExpenseForm({
                                     </div>
                                     {selectedMembers.has(member.uid) && amountNum > 0 && (
                                         <span className="text-sm text-gray-600">
-                                            ₹{(amountNum / selectedMembers.size).toFixed(2)}
+                                            ₹{equalPreview[member.uid].toFixed(2)}
                                         </span>
                                     )}
                                 </label>
@@ -302,7 +303,7 @@ export default function AddExpenseForm({
                         {amountNum > 0 && (
                             <div className="bg-blue-50 border border-blue-200 rounded-md p-2 mt-1">
                                 <p className="text-sm text-blue-800">
-                                    ₹{(amountNum / selectedMembers.size).toFixed(2)} per person ({selectedMembers.size} of {members.length} members)
+                                    ₹{amountNum.toFixed(2)} between {selectedMembers.size} of {members.length} members
                                 </p>
                             </div>
                         )}
@@ -339,21 +340,19 @@ export default function AddExpenseForm({
                         </div>
                         <div
                             className={`rounded-md p-2 mt-1 border ${
-                                amountNum > 0 && getExactTotal() === amountNum
+                                exactTotalMatches
                                     ? "bg-green-50 border-green-200"
                                     : "bg-orange-50 border-orange-200"
                             }`}
                         >
                             <p
                                 className={`text-sm ${
-                                    amountNum > 0 && getExactTotal() === amountNum
-                                        ? "text-green-800"
-                                        : "text-orange-800"
+                                    exactTotalMatches ? "text-green-800" : "text-orange-800"
                                 }`}
                             >
                                 Total: ₹{getExactTotal().toFixed(2)} / ₹{amountNum.toFixed(2)}
-                                {amountNum > 0 && getExactTotal() !== amountNum && (
-                                    <span> (₹{Math.abs(amountNum - getExactTotal()).toFixed(2)} remaining)</span>
+                                {amountNum > 0 && !exactTotalMatches && (
+                                    <span> (₹{(Math.abs(amountPaise - getExactTotalPaise()) / 100).toFixed(2)} remaining)</span>
                                 )}
                             </p>
                         </div>
@@ -396,18 +395,18 @@ export default function AddExpenseForm({
                         </div>
                         <div
                             className={`rounded-md p-2 mt-1 border ${
-                                getPercentageTotal() === 100
+                                percentageTotalMatches
                                     ? "bg-green-50 border-green-200"
                                     : "bg-orange-50 border-orange-200"
                             }`}
                         >
                             <p
                                 className={`text-sm ${
-                                    getPercentageTotal() === 100 ? "text-green-800" : "text-orange-800"
+                                    percentageTotalMatches ? "text-green-800" : "text-orange-800"
                                 }`}
                             >
                                 Total: {getPercentageTotal()}% / 100%
-                                {getPercentageTotal() !== 100 && (
+                                {!percentageTotalMatches && (
                                     <span> ({Math.abs(100 - getPercentageTotal()).toFixed(2)}% remaining)</span>
                                 )}
                             </p>

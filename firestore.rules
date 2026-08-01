@@ -1,0 +1,113 @@
+rules_version = '2';
+
+// Split-It-Wise Firestore rules.
+//
+// Every permission check in src/lib/* runs in the browser, so it can be
+// bypassed by calling the Firestore SDK directly from the console. These rules
+// are the real enforcement; treat the client-side checks as UX only and keep
+// the two in sync (see src/lib/groups.ts and src/lib/expenses.ts).
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function groupData(groupId) {
+      return get(/databases/$(database)/documents/groups/$(groupId)).data;
+    }
+
+    function isGroupMember(groupId) {
+      return signedIn() && request.auth.uid in groupData(groupId).members;
+    }
+
+    function isGroupAdmin(groupId) {
+      return signedIn() && groupData(groupId).adminId == request.auth.uid;
+    }
+
+    // --- users --------------------------------------------------------
+    // Readable by any signed-in user: getUsersByIds() reads this collection to
+    // resolve member names and avatars for a group.
+    match /users/{userId} {
+      allow read: if signedIn();
+
+      allow create: if signedIn()
+                    && request.auth.uid == userId
+                    && request.resource.data.uid == userId;
+
+      // You may edit your own profile, but never your uid or your join date.
+      allow update: if signedIn()
+                    && request.auth.uid == userId
+                    && request.resource.data.uid == resource.data.uid
+                    && request.resource.data.createdAt == resource.data.createdAt;
+
+      allow delete: if false;
+    }
+
+    // --- groups -------------------------------------------------------
+    match /groups/{groupId} {
+
+      // The admin may rename the group and remove members, but can never hand
+      // the group off or drop their own membership.
+      function adminEdit() {
+        return signedIn()
+               && resource.data.adminId == request.auth.uid
+               && request.resource.data.adminId == resource.data.adminId
+               && request.resource.data.adminId in request.resource.data.members;
+      }
+
+      // An invitee adding themselves and changing nothing else. arrayUnion
+      // appends, so the new list must equal the old one with the uid on the end.
+      function selfJoin() {
+        return signedIn()
+               && !(request.auth.uid in resource.data.members)
+               && request.resource.data.members == resource.data.members.concat([request.auth.uid])
+               && request.resource.data.name == resource.data.name
+               && request.resource.data.adminId == resource.data.adminId;
+      }
+
+      // Any signed-in user may fetch a group by id: /join/[groupId] needs the
+      // group before the invitee is a member. That makes the 20-character
+      // Firestore auto-id the shared secret, which is what the invite links
+      // already assume.
+      allow get: if signedIn();
+
+      // Listing is limited to your own groups. getUserGroups() filters on
+      // members array-contains <uid>, which satisfies this.
+      allow list: if signedIn() && request.auth.uid in resource.data.members;
+
+      allow create: if signedIn()
+                    && request.resource.data.adminId == request.auth.uid
+                    && request.resource.data.members == [request.auth.uid];
+
+      allow update: if adminEdit() || selfJoin();
+
+      allow delete: if isGroupAdmin(groupId);
+    }
+
+    // --- expenses -----------------------------------------------------
+    match /expenses/{expenseId} {
+      allow read: if isGroupMember(resource.data.groupId);
+
+      allow create: if signedIn()
+                    && request.resource.data.createdBy == request.auth.uid
+                    && isGroupMember(request.resource.data.groupId)
+                    && request.resource.data.amount is number
+                    && request.resource.data.amount > 0
+                    && request.resource.data.paidBy in groupData(request.resource.data.groupId).members
+                    && request.resource.data.splitType in ['equal', 'exact', 'percentage']
+                    && request.resource.data.splits.keys().hasOnly(groupData(request.resource.data.groupId).members);
+
+      // There is no edit-expense flow in the app; delete and re-add instead.
+      allow update: if false;
+
+      // The creator check comes first so that deleting your own expense costs
+      // no document reads. deleteGroup() batches deletes and relies on staying
+      // under the per-request access-call limit.
+      allow delete: if signedIn()
+                    && (resource.data.createdBy == request.auth.uid
+                        || isGroupAdmin(resource.data.groupId));
+    }
+  }
+}
