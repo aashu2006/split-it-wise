@@ -76,18 +76,23 @@ export const splitByPercentage = (
  * Uses stored splits from each expense for accurate per-person shares.
  * Falls back to equal split for legacy expenses without splits data.
  *
+ * Balances are keyed by every uid that takes part in the group's history, not
+ * just its current members. Someone who was removed while still owing money
+ * keeps their balance here — dropping them would delete their share of the
+ * ledger and leave the remaining balances no longer summing to zero.
+ *
  * @param expenses - All expenses in the group
- * @param members - All members in the group
- * @returns Array of member balances
+ * @param memberUids - UIDs of the group's current members
+ * @returns Map of uid to balance in INR
  */
-export const calculateMemberBalances = (
+export const calculateBalancesByUid = (
     expenses: Expense[],
-    members: User[]
-): MemberBalance[] => {
+    memberUids: string[]
+): { [uid: string]: number } => {
     const balances: { [uid: string]: number } = {};
-    members.forEach((member) => {
-        balances[member.uid] = 0;
-    });
+    for (const uid of participantUids(expenses, memberUids)) {
+        balances[uid] = 0;
+    }
 
     const applyShares = (splits: { [uid: string]: number }) => {
         for (const [uid, share] of Object.entries(splits)) {
@@ -107,16 +112,60 @@ export const calculateMemberBalances = (
             // Use stored splits
             applyShares(expense.splits);
         } else {
-            // Legacy fallback: equal split among all members
-            applyShares(splitEqually(expense.amount, members.map((m) => m.uid)));
+            // Legacy fallback: equal split among the current members. Who was
+            // in the group back then isn't recoverable from an expense that
+            // predates stored splits.
+            applyShares(splitEqually(expense.amount, memberUids));
         }
     });
 
-    return members.map((member) => ({
-        uid: member.uid,
-        name: member.name,
-        balance: toRupees(balances[member.uid]),
-    }));
+    return Object.fromEntries(
+        Object.entries(balances).map(([uid, paise]) => [uid, toRupees(paise)])
+    );
+};
+
+/**
+ * Everyone who takes part in the group's ledger: its current members plus
+ * anyone who paid for or was included in an expense.
+ */
+const participantUids = (expenses: Expense[], memberUids: string[]): string[] => {
+    const uids = new Set(memberUids);
+    for (const expense of expenses) {
+        uids.add(expense.paidBy);
+        for (const uid of Object.keys(expense.splits ?? {})) {
+            uids.add(uid);
+        }
+    }
+    return [...uids];
+};
+
+/**
+ * Calculate balance for each member in a group, with display names attached.
+ * Members come first, then anyone who has left the group but is still part of
+ * its history (flagged with isFormerMember).
+ *
+ * @param expenses - All expenses in the group
+ * @param members - Current members, plus profiles for any former participants
+ * @param memberUids - UIDs of the current members; defaults to every uid in `members`
+ * @returns Array of member balances
+ */
+export const calculateMemberBalances = (
+    expenses: Expense[],
+    members: User[],
+    memberUids: string[] = members.map((m) => m.uid)
+): MemberBalance[] => {
+    const balances = calculateBalancesByUid(expenses, memberUids);
+    const currentMembers = new Set(memberUids);
+    const namesByUid = new Map(members.map((m) => [m.uid, m.name]));
+
+    return Object.keys(balances)
+        .sort((a, b) => Number(currentMembers.has(b)) - Number(currentMembers.has(a)))
+        .map((uid) => ({
+            uid,
+            name: namesByUid.get(uid) || "Unknown",
+            balance: balances[uid],
+            isFormerMember: !currentMembers.has(uid),
+        }));
 };
 
 /**
