@@ -1,11 +1,12 @@
 "use client";
 
-import { User } from "@/types";
+import { MemberBalance, User } from "@/types";
 import { removeMemberFromGroup } from "@/lib/groups";
 import { useState } from "react";
 
 interface MembersListProps {
     members: User[];
+    balances: MemberBalance[];
     adminId: string;
     currentUserId: string;
     groupId: string;
@@ -14,6 +15,7 @@ interface MembersListProps {
 
 export default function MembersList({
     members,
+    balances,
     adminId,
     currentUserId,
     groupId,
@@ -21,6 +23,18 @@ export default function MembersList({
 }: MembersListProps) {
     const [removing, setRemoving] = useState<string | null>(null);
     const isAdmin = currentUserId === adminId;
+
+    const balanceByUid = new Map(balances.map((b) => [b.uid, b.balance]));
+
+    // A member mid-debt can't be removed: expenses can only reference current
+    // members, so once they're out there is no way to settle with them.
+    const settleFirst = (uid: string): string | null => {
+        const balance = balanceByUid.get(uid) ?? 0;
+        if (balance === 0) return null;
+        return balance > 0
+            ? `Owed ₹${balance.toFixed(2)} — settle up before removing`
+            : `Owes ₹${Math.abs(balance).toFixed(2)} — settle up before removing`;
+    };
 
     const handleRemoveMember = async (userId: string, userName: string) => {
         if (!confirm(`Remove ${userName} from the group?`)) return;
@@ -71,13 +85,21 @@ export default function MembersList({
                     </div>
 
                     {isAdmin && member.uid !== adminId && (
-                        <button
-                            onClick={() => handleRemoveMember(member.uid, member.name)}
-                            disabled={removing === member.uid}
-                            className="text-red-600 hover:text-red-700 text-sm font-medium disabled:opacity-50"
-                        >
-                            {removing === member.uid ? "Removing..." : "Remove"}
-                        </button>
+                        <div className="text-right">
+                            <button
+                                onClick={() => handleRemoveMember(member.uid, member.name)}
+                                disabled={removing === member.uid || settleFirst(member.uid) !== null}
+                                title={settleFirst(member.uid) ?? undefined}
+                                className="text-red-600 hover:text-red-700 text-sm font-medium disabled:text-gray-400 disabled:cursor-not-allowed"
+                            >
+                                {removing === member.uid ? "Removing..." : "Remove"}
+                            </button>
+                            {settleFirst(member.uid) && (
+                                <div className="text-xs text-gray-500 mt-0.5">
+                                    Settle up first
+                                </div>
+                            )}
+                        </div>
                     )}
                 </div>
             ))}

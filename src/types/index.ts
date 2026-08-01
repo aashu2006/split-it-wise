@@ -35,4 +35,5 @@ export interface MemberBalance {
     uid: string;
     name: string;
     balance: number; // Positive = to receive, Negative = to pay
+    isFormerMember?: boolean; // Left the group but still part of its expense history
 }

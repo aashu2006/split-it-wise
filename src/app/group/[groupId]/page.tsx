@@ -64,18 +64,26 @@ export default function GroupDashboard() {
             setGroup(groupData);
             setNewGroupName(groupData.name);
 
-            // Load member details
-            const memberDetails = await getUsersByIds(groupData.members);
-            setMembers(memberDetails);
-
             // Load expenses
             const groupExpenses = await getGroupExpenses(groupId);
             setExpenses(groupExpenses);
 
+            // Load profiles for everyone in the ledger, not just current
+            // members — anyone removed while unsettled still has a balance.
+            const participants = new Set(groupData.members);
+            groupExpenses.forEach((expense) => {
+                participants.add(expense.paidBy);
+                Object.keys(expense.splits ?? {}).forEach((uid) => participants.add(uid));
+            });
+            const profiles = await getUsersByIds([...participants]);
+            const currentMembers = new Set(groupData.members);
+            setMembers(profiles.filter((profile) => currentMembers.has(profile.uid)));
+
             // Calculate balances
             const memberBalances = calculateMemberBalances(
                 groupExpenses,
-                memberDetails
+                profiles,
+                groupData.members
             );
             setBalances(memberBalances);
 
@@ -273,6 +281,7 @@ export default function GroupDashboard() {
                     </h2>
                     <MembersList
                         members={members}
+                        balances={balances}
                         adminId={group.adminId}
                         currentUserId={user?.uid || ""}
                         groupId={groupId}

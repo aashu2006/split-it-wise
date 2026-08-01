@@ -14,7 +14,8 @@ import {
     writeBatch,
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { Group } from "@/types";
+import { calculateBalancesByUid } from "./calculations";
+import { Expense, Group } from "@/types";
 
 /**
  * Create a new group
@@ -87,6 +88,16 @@ export const addMemberToGroup = async (groupId: string, userId: string): Promise
 
 /**
  * Remove a member from a group (admin only)
+ *
+ * Refuses to remove anyone who still owes or is owed money. Expenses can only
+ * reference current members, so a removed member cannot be settled up until
+ * they rejoin — letting them leave mid-debt strands the balance.
+ *
+ * This check can only run on the client: security rules can't sum a
+ * collection. It guards against accidents rather than a determined admin, but
+ * calculateBalancesByUid keeps a removed member in the ledger either way, so a
+ * bypass no longer loses the money.
+ *
  * @param groupId - Group ID
  * @param userId - User ID to remove
  * @param requesterId - User ID making the request (must be admin)
@@ -100,6 +111,24 @@ export const removeMemberFromGroup = async (
     if (!group) throw new Error("Group not found");
     if (group.adminId !== requesterId) throw new Error("Only admin can remove members");
     if (userId === group.adminId) throw new Error("Admin cannot be removed");
+
+    // Queried here rather than through lib/expenses to keep this module free of
+    // a circular import (expenses.ts imports getGroup from this file).
+    const expensesRef = collection(db, "expenses");
+    const expenses = await getDocs(query(expensesRef, where("groupId", "==", groupId)));
+    const balances = calculateBalancesByUid(
+        expenses.docs.map((expense) => expense.data() as Expense),
+        group.members
+    );
+
+    const balance = balances[userId] ?? 0;
+    if (balance !== 0) {
+        throw new Error(
+            balance > 0
+                ? `They are still owed ₹${balance.toFixed(2)}. Settle up before removing them.`
+                : `They still owe ₹${Math.abs(balance).toFixed(2)}. Settle up before removing them.`
+        );
+    }
 
     const groupRef = doc(db, "groups", groupId);
     await updateDoc(groupRef, {

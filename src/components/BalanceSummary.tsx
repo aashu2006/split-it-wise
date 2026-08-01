@@ -12,7 +12,13 @@ export default function BalanceSummary({
     balances,
     currentUserId,
 }: BalanceSummaryProps) {
-    if (balances.length === 0) {
+    // Former members only matter while they still owe or are owed something.
+    // Once settled they are just clutter in a list of current members.
+    const visible = balances.filter(
+        (memberBalance) => !memberBalance.isFormerMember || memberBalance.balance !== 0
+    );
+
+    if (visible.length === 0) {
         return (
             <div className="text-center py-8 text-gray-500">
                 Add expenses to see who owes whom
@@ -22,7 +28,7 @@ export default function BalanceSummary({
 
     return (
         <div className="space-y-3">
-            {balances.map((memberBalance) => {
+            {visible.map((memberBalance) => {
                 const { text, color } = formatBalance(memberBalance.balance);
                 const isCurrentUser = memberBalance.uid === currentUserId;
 
@@ -39,9 +45,16 @@ export default function BalanceSummary({
                     >
                         <div className="flex items-center justify-between">
                             <div>
-                                <div className="font-semibold">
-                                    {memberBalance.name}
-                                    {isCurrentUser && " (You)"}
+                                <div className="font-semibold flex items-center gap-2">
+                                    <span>
+                                        {memberBalance.name}
+                                        {isCurrentUser && " (You)"}
+                                    </span>
+                                    {memberBalance.isFormerMember && (
+                                        <span className="text-xs font-normal bg-gray-200 text-gray-700 px-2 py-0.5 rounded">
+                                            left group
+                                        </span>
+                                    )}
                                 </div>
                                 <div className="text-sm mt-1">{text}</div>
                             </div>
