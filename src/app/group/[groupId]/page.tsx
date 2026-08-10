@@ -6,13 +6,16 @@ import { useRouter, useParams } from "next/navigation";
 import { getGroup, updateGroupName, deleteGroup } from "@/lib/groups";
 import { getUsersByIds } from "@/lib/user";
 import { getGroupExpenses } from "@/lib/expenses";
-import { calculateMemberBalances } from "@/lib/calculations";
-import { Group, User, Expense, MemberBalance } from "@/types";
+import { getGroupSettlements } from "@/lib/settlements";
+import { calculateMemberBalances, calculateBalancesByUid, simplifyDebts } from "@/lib/calculations";
+import { Group, User, Expense, MemberBalance, Settlement, Transfer } from "@/types";
 import MembersList from "@/components/MembersList";
 import ConfirmModal from "@/components/ConfirmModal";
 import AddExpenseModal from "@/components/AddExpenseModal";
 import ExpenseList from "@/components/ExpenseList";
 import BalanceSummary from "@/components/BalanceSummary";
+import SettleUp from "@/components/SettleUp";
+import SettleUpModal from "@/components/SettleUpModal";
 
 export default function GroupDashboard() {
     const { user, loading: authLoading } = useAuth();
@@ -23,7 +26,11 @@ export default function GroupDashboard() {
     const [group, setGroup] = useState<Group | null>(null);
     const [members, setMembers] = useState<User[]>([]);
     const [expenses, setExpenses] = useState<Expense[]>([]);
+    const [settlements, setSettlements] = useState<Settlement[]>([]);
     const [balances, setBalances] = useState<MemberBalance[]>([]);
+    const [transfers, setTransfers] = useState<Transfer[]>([]);
+    const [settlingTransfer, setSettlingTransfer] = useState<Transfer | null>(null);
+    const [ledgerProfiles, setLedgerProfiles] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
@@ -37,6 +44,9 @@ export default function GroupDashboard() {
 
     // Add expense modal state
     const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
+
+    // Invite link state
+    const [inviteCopied, setInviteCopied] = useState(false);
 
     const loadGroupData = async () => {
         if (authLoading) return;
@@ -64,9 +74,13 @@ export default function GroupDashboard() {
             setGroup(groupData);
             setNewGroupName(groupData.name);
 
-            // Load expenses
-            const groupExpenses = await getGroupExpenses(groupId);
+            // Load expenses and the repayments made against them
+            const [groupExpenses, groupSettlements] = await Promise.all([
+                getGroupExpenses(groupId),
+                getGroupSettlements(groupId),
+            ]);
             setExpenses(groupExpenses);
+            setSettlements(groupSettlements);
 
             // Load profiles for everyone in the ledger, not just current
             // members — anyone removed while unsettled still has a balance.
@@ -75,17 +89,28 @@ export default function GroupDashboard() {
                 participants.add(expense.paidBy);
                 Object.keys(expense.splits ?? {}).forEach((uid) => participants.add(uid));
             });
+            groupSettlements.forEach((settlement) => {
+                participants.add(settlement.from);
+                participants.add(settlement.to);
+            });
             const profiles = await getUsersByIds([...participants]);
             const currentMembers = new Set(groupData.members);
+            setLedgerProfiles(profiles);
             setMembers(profiles.filter((profile) => currentMembers.has(profile.uid)));
 
-            // Calculate balances
+            // Calculate balances, then turn them into actual payments to make
             const memberBalances = calculateMemberBalances(
                 groupExpenses,
                 profiles,
-                groupData.members
+                groupData.members,
+                groupSettlements
             );
             setBalances(memberBalances);
+            setTransfers(
+                simplifyDebts(
+                    calculateBalancesByUid(groupExpenses, groupData.members, groupSettlements)
+                )
+            );
 
             setLoading(false);
         } catch (err) {
@@ -99,10 +124,33 @@ export default function GroupDashboard() {
         loadGroupData();
     }, [user, authLoading, groupId, router]);
 
-    const copyInviteLink = () => {
+    const copyInviteLink = async () => {
         const inviteLink = `${window.location.origin}/join/${groupId}`;
-        navigator.clipboard.writeText(inviteLink);
-        alert("Invite link copied! Share it via WhatsApp to invite friends.");
+
+        try {
+            // navigator.clipboard only exists in secure contexts, so testing over
+            // a plain-http LAN address falls through to the old execCommand path.
+            if (navigator.clipboard) {
+                await navigator.clipboard.writeText(inviteLink);
+            } else {
+                const field = document.createElement("textarea");
+                field.value = inviteLink;
+                field.style.position = "fixed";
+                field.style.opacity = "0";
+                document.body.appendChild(field);
+                field.select();
+                const copied = document.execCommand("copy");
+                document.body.removeChild(field);
+                if (!copied) throw new Error("Copy command was rejected");
+            }
+
+            setInviteCopied(true);
+            setTimeout(() => setInviteCopied(false), 2000);
+        } catch {
+            // Last resort: show the link so it can be copied by hand rather than
+            // claiming success when nothing reached the clipboard.
+            prompt("Copy this invite link:", inviteLink);
+        }
     };
 
     const handleRenameGroup = async () => {
@@ -226,7 +274,7 @@ export default function GroupDashboard() {
                             onClick={copyInviteLink}
                             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm whitespace-nowrap"
                         >
-                            📋 Copy Invite Link
+                            {inviteCopied ? "✓ Copied!" : "📋 Copy Invite Link"}
                         </button>
                     </div>
 
@@ -249,6 +297,21 @@ export default function GroupDashboard() {
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
                     <h2 className="text-lg font-semibold text-gray-900 mb-4">Balance Summary</h2>
                     <BalanceSummary balances={balances} currentUserId={user?.uid || ""} />
+                </div>
+
+                {/* Settle Up Section */}
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Settle Up</h2>
+                    <SettleUp
+                        transfers={transfers}
+                        settlements={settlements}
+                        members={ledgerProfiles}
+                        currentUserId={user?.uid || ""}
+                        groupId={groupId}
+                        isAdmin={isAdmin}
+                        onSettle={setSettlingTransfer}
+                        onSettlementDeleted={loadGroupData}
+                    />
                 </div>
 
                 {/* Expenses Section */}
@@ -286,6 +349,7 @@ export default function GroupDashboard() {
                         currentUserId={user?.uid || ""}
                         groupId={groupId}
                         onMemberRemoved={loadGroupData}
+                        onProfileUpdated={loadGroupData}
                     />
                 </div>
             </main>
@@ -298,6 +362,17 @@ export default function GroupDashboard() {
                 members={members}
                 currentUserId={user?.uid || ""}
                 onExpenseAdded={loadGroupData}
+            />
+
+            {/* Settle Up Modal */}
+            <SettleUpModal
+                transfer={settlingTransfer}
+                members={ledgerProfiles}
+                currentUserId={user?.uid || ""}
+                groupId={groupId}
+                groupName={group.name}
+                onClose={() => setSettlingTransfer(null)}
+                onSettled={loadGroupData}
             />
 
             {/* Delete Group Confirmation Modal */}

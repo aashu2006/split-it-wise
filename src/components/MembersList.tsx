@@ -2,6 +2,7 @@
 
 import { MemberBalance, User } from "@/types";
 import { removeMemberFromGroup } from "@/lib/groups";
+import { saveUpiId } from "@/lib/user";
 import { useState } from "react";
 
 interface MembersListProps {
@@ -11,6 +12,86 @@ interface MembersListProps {
     currentUserId: string;
     groupId: string;
     onMemberRemoved: () => void;
+    onProfileUpdated: () => void;
+}
+
+/**
+ * Inline editor for your own UPI ID. Lives here rather than on a settings page
+ * because this is where you see everyone else's, which is what prompts you to
+ * add your own.
+ */
+function UpiIdField({
+    currentUserId,
+    upiId,
+    onSaved,
+}: {
+    currentUserId: string;
+    upiId?: string;
+    onSaved: () => void;
+}) {
+    const [editing, setEditing] = useState(false);
+    const [value, setValue] = useState(upiId || "");
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState("");
+
+    const handleSave = async () => {
+        setError("");
+        setSaving(true);
+        try {
+            await saveUpiId(currentUserId, value);
+            setEditing(false);
+            onSaved();
+        } catch (err: any) {
+            setError(err.message || "Failed to save");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    if (!editing) {
+        return (
+            <button
+                onClick={() => setEditing(true)}
+                className="text-xs text-blue-600 hover:text-blue-700 mt-0.5"
+            >
+                {upiId ? `UPI: ${upiId} (edit)` : "+ Add your UPI ID"}
+            </button>
+        );
+    }
+
+    return (
+        <div className="mt-1">
+            <div className="flex items-center gap-1">
+                <input
+                    type="text"
+                    value={value}
+                    onChange={(e) => setValue(e.target.value)}
+                    placeholder="name@okhdfcbank"
+                    className="px-2 py-1 border border-gray-300 rounded text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    disabled={saving}
+                    autoFocus
+                />
+                <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="text-xs text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
+                >
+                    {saving ? "..." : "Save"}
+                </button>
+                <button
+                    onClick={() => {
+                        setEditing(false);
+                        setValue(upiId || "");
+                        setError("");
+                    }}
+                    className="text-xs text-gray-500 hover:text-gray-700"
+                >
+                    Cancel
+                </button>
+            </div>
+            {error && <div className="text-xs text-red-600 mt-0.5">{error}</div>}
+        </div>
+    );
 }
 
 export default function MembersList({
@@ -20,6 +101,7 @@ export default function MembersList({
     currentUserId,
     groupId,
     onMemberRemoved,
+    onProfileUpdated,
 }: MembersListProps) {
     const [removing, setRemoving] = useState<string | null>(null);
     const isAdmin = currentUserId === adminId;
@@ -80,6 +162,19 @@ export default function MembersList({
                             </div>
                             {member.uid === currentUserId && (
                                 <div className="text-sm text-gray-600">{member.email}</div>
+                            )}
+                            {member.uid === currentUserId ? (
+                                <UpiIdField
+                                    currentUserId={currentUserId}
+                                    upiId={member.upiId}
+                                    onSaved={onProfileUpdated}
+                                />
+                            ) : (
+                                member.upiId && (
+                                    <div className="text-xs text-gray-500 mt-0.5">
+                                        UPI: {member.upiId}
+                                    </div>
+                                )
                             )}
                         </div>
                     </div>

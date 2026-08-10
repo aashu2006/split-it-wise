@@ -5,6 +5,7 @@ export interface User {
     name: string;
     email: string;
     photoURL?: string;
+    upiId?: string; // e.g. "akshat@okhdfcbank", used to build UPI payment links
     createdAt: Timestamp;
 }
 
@@ -29,6 +30,27 @@ export interface Expense {
     splitType: SplitType;
     splits: { [uid: string]: number }; // uid -> amount owed
     createdAt: Timestamp;
+}
+
+/**
+ * A repayment between two members. Kept separate from Expense so that group
+ * spending totals don't count money moving back and forth to clear debts.
+ */
+export interface Settlement {
+    id: string;
+    groupId: string;
+    from: string; // User UID who paid
+    to: string; // User UID who was paid
+    amount: number; // In INR
+    createdBy: string; // User UID who recorded it
+    createdAt: Timestamp;
+}
+
+/** One payment needed to clear the group's debts. */
+export interface Transfer {
+    from: string; // User UID who should pay
+    to: string; // User UID who should be paid
+    amount: number; // In INR
 }
 
 export interface MemberBalance {

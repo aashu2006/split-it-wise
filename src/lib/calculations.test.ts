@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
     calculateBalancesByUid,
     calculateMemberBalances,
+    simplifyDebts,
     splitByPercentage,
     splitEqually,
 } from "./calculations";
-import { Expense, User } from "@/types";
+import { buildUpiLink, isValidUpiId } from "./upi";
+import { Expense, Settlement, User } from "@/types";
 
 const sum = (values: number[]) => Math.round(values.reduce((a, b) => a + b, 0) * 100);
 const paise = (rupees: number) => Math.round(rupees * 100);
@@ -16,6 +18,9 @@ const MEMBER_UIDS = ["a", "b", "c"];
 
 const expense = (partial: Partial<Expense>): Expense =>
     ({ groupId: "g", description: "d", splitType: "equal", ...partial } as Expense);
+
+const settlement = (from: string, to: string, amount: number): Settlement =>
+    ({ id: `${from}-${to}-${amount}`, groupId: "g", from, to, amount } as Settlement);
 
 describe("splitEqually", () => {
     it("sums to the original amount for every amount and group size", () => {
@@ -115,6 +120,119 @@ describe("calculateBalancesByUid", () => {
 
         expect(balances.c).toBe(60);
         expect(sum(Object.values(balances))).toBe(0);
+    });
+});
+
+describe("settlements", () => {
+    const oneExpense = [expense({ paidBy: "a", amount: 90, splits: splitEqually(90, MEMBER_UIDS) })];
+
+    it("clears a debt when it is paid in full", () => {
+        const balances = calculateBalancesByUid(oneExpense, MEMBER_UIDS, [
+            settlement("b", "a", 30),
+            settlement("c", "a", 30),
+        ]);
+        expect(balances).toEqual({ a: 0, b: 0, c: 0 });
+    });
+
+    it("reduces the debt when paid in part", () => {
+        const balances = calculateBalancesByUid(oneExpense, MEMBER_UIDS, [
+            settlement("b", "a", 10),
+        ]);
+        expect(balances.b).toBe(-20);
+        expect(balances.a).toBe(50);
+        expect(sum(Object.values(balances))).toBe(0);
+    });
+
+    it("still nets to zero when someone overpays", () => {
+        const balances = calculateBalancesByUid(oneExpense, MEMBER_UIDS, [
+            settlement("b", "a", 50),
+        ]);
+        expect(balances.b).toBe(20);
+        expect(sum(Object.values(balances))).toBe(0);
+    });
+
+    it("does not count repayments as group spending", () => {
+        // A settlement moves money already spent, so it must not change what
+        // anyone's share of the expenses was.
+        const withSettlement = calculateBalancesByUid(oneExpense, MEMBER_UIDS, [
+            settlement("b", "a", 30),
+        ]);
+        const without = calculateBalancesByUid(oneExpense, MEMBER_UIDS);
+        expect(withSettlement.b - without.b).toBe(30);
+    });
+});
+
+describe("simplifyDebts", () => {
+    it("returns nothing when everyone is settled", () => {
+        expect(simplifyDebts({ a: 0, b: 0, c: 0 })).toEqual([]);
+    });
+
+    it("pairs a single debtor with a single creditor", () => {
+        expect(simplifyDebts({ a: 60, b: -60 })).toEqual([{ from: "b", to: "a", amount: 60 }]);
+    });
+
+    it("never needs more than n-1 transfers", () => {
+        const balances = { a: 100, b: 50, c: -30, d: -45, e: -75 };
+        const transfers = simplifyDebts(balances);
+        expect(transfers.length).toBeLessThanOrEqual(Object.keys(balances).length - 1);
+    });
+
+    it("produces transfers that exactly clear every balance", () => {
+        const balances: { [uid: string]: number } = {
+            a: 123.45,
+            b: -60.2,
+            c: -63.25,
+            d: 0,
+        };
+        const settled = { ...balances };
+        for (const transfer of simplifyDebts(balances)) {
+            settled[transfer.from] += transfer.amount;
+            settled[transfer.to] -= transfer.amount;
+        }
+        for (const uid of Object.keys(settled)) {
+            expect(paise(settled[uid])).toBe(0);
+        }
+    });
+
+    it("only ever moves money from debtors to creditors", () => {
+        const balances: { [uid: string]: number } = { a: 40, b: 20, c: -25, d: -35 };
+        for (const transfer of simplifyDebts(balances)) {
+            expect(balances[transfer.from]).toBeLessThan(0);
+            expect(balances[transfer.to]).toBeGreaterThan(0);
+            expect(transfer.amount).toBeGreaterThan(0);
+        }
+    });
+
+    it("handles debts that do not divide evenly", () => {
+        const transfers = simplifyDebts({ a: 33.34, b: -33.34 });
+        expect(transfers).toEqual([{ from: "b", to: "a", amount: 33.34 }]);
+    });
+});
+
+describe("upi", () => {
+    it("accepts real-looking UPI IDs", () => {
+        expect(isValidUpiId("akshat@okhdfcbank")).toBe(true);
+        expect(isValidUpiId("akshat.patil-1@ybl")).toBe(true);
+        expect(isValidUpiId("  akshat@paytm  ")).toBe(true);
+    });
+
+    it("rejects malformed ones", () => {
+        expect(isValidUpiId("akshat")).toBe(false);
+        expect(isValidUpiId("@ybl")).toBe(false);
+        expect(isValidUpiId("akshat@")).toBe(false);
+        expect(isValidUpiId("akshat@ybl@ybl")).toBe(false);
+        expect(isValidUpiId("")).toBe(false);
+    });
+
+    it("builds a link the payment apps can read", () => {
+        const link = buildUpiLink("akshat@ybl", "Akshat Patil", 300.5, "Goa trip settle up");
+        expect(link).toBe(
+            "upi://pay?pa=akshat%40ybl&pn=Akshat+Patil&am=300.50&cu=INR&tn=Goa+trip+settle+up"
+        );
+    });
+
+    it("always sends two decimal places", () => {
+        expect(buildUpiLink("a@ybl", "A", 300, "x")).toContain("am=300.00");
     });
 });
 

@@ -1,4 +1,4 @@
-import { Expense, MemberBalance, User } from "@/types";
+import { Expense, MemberBalance, Settlement, Transfer, User } from "@/types";
 
 /**
  * Money is held as integer paise for every intermediate calculation. Rounding
@@ -83,14 +83,16 @@ export const splitByPercentage = (
  *
  * @param expenses - All expenses in the group
  * @param memberUids - UIDs of the group's current members
+ * @param settlements - Repayments already made between members
  * @returns Map of uid to balance in INR
  */
 export const calculateBalancesByUid = (
     expenses: Expense[],
-    memberUids: string[]
+    memberUids: string[],
+    settlements: Settlement[] = []
 ): { [uid: string]: number } => {
     const balances: { [uid: string]: number } = {};
-    for (const uid of participantUids(expenses, memberUids)) {
+    for (const uid of participantUids(expenses, memberUids, settlements)) {
         balances[uid] = 0;
     }
 
@@ -119,6 +121,17 @@ export const calculateBalancesByUid = (
         }
     });
 
+    // Paying someone back cancels the debt in both directions: the payer is out
+    // of pocket by that much less, the payee is owed that much less.
+    settlements.forEach((settlement) => {
+        if (balances[settlement.from] !== undefined) {
+            balances[settlement.from] += toPaise(settlement.amount);
+        }
+        if (balances[settlement.to] !== undefined) {
+            balances[settlement.to] -= toPaise(settlement.amount);
+        }
+    });
+
     return Object.fromEntries(
         Object.entries(balances).map(([uid, paise]) => [uid, toRupees(paise)])
     );
@@ -126,9 +139,13 @@ export const calculateBalancesByUid = (
 
 /**
  * Everyone who takes part in the group's ledger: its current members plus
- * anyone who paid for or was included in an expense.
+ * anyone who paid for, was included in an expense, or settled up.
  */
-const participantUids = (expenses: Expense[], memberUids: string[]): string[] => {
+const participantUids = (
+    expenses: Expense[],
+    memberUids: string[],
+    settlements: Settlement[] = []
+): string[] => {
     const uids = new Set(memberUids);
     for (const expense of expenses) {
         uids.add(expense.paidBy);
@@ -136,7 +153,57 @@ const participantUids = (expenses: Expense[], memberUids: string[]): string[] =>
             uids.add(uid);
         }
     }
+    for (const settlement of settlements) {
+        uids.add(settlement.from);
+        uids.add(settlement.to);
+    }
     return [...uids];
+};
+
+/**
+ * Work out who should pay whom to clear the group's debts.
+ *
+ * Balances alone only say what each person is up or down; they don't say who
+ * hands money to whom. Repeatedly matching the largest debtor against the
+ * largest creditor clears at least one person per transfer, so a group of n
+ * people never needs more than n-1 payments.
+ *
+ * @param balances - Map of uid to balance in INR, as returned by calculateBalancesByUid
+ * @returns Transfers to make, largest first
+ */
+export const simplifyDebts = (balances: { [uid: string]: number }): Transfer[] => {
+    const debtors: { uid: string; paise: number }[] = [];
+    const creditors: { uid: string; paise: number }[] = [];
+
+    for (const [uid, balance] of Object.entries(balances)) {
+        const paise = toPaise(balance);
+        if (paise < 0) debtors.push({ uid, paise: -paise });
+        else if (paise > 0) creditors.push({ uid, paise });
+    }
+
+    // Largest first, so the biggest debts are cleared in the fewest payments.
+    debtors.sort((a, b) => b.paise - a.paise || a.uid.localeCompare(b.uid));
+    creditors.sort((a, b) => b.paise - a.paise || a.uid.localeCompare(b.uid));
+
+    const transfers: Transfer[] = [];
+    let i = 0;
+    let j = 0;
+
+    while (i < debtors.length && j < creditors.length) {
+        const paise = Math.min(debtors[i].paise, creditors[j].paise);
+        transfers.push({
+            from: debtors[i].uid,
+            to: creditors[j].uid,
+            amount: toRupees(paise),
+        });
+
+        debtors[i].paise -= paise;
+        creditors[j].paise -= paise;
+        if (debtors[i].paise === 0) i++;
+        if (creditors[j].paise === 0) j++;
+    }
+
+    return transfers;
 };
 
 /**
@@ -147,14 +214,16 @@ const participantUids = (expenses: Expense[], memberUids: string[]): string[] =>
  * @param expenses - All expenses in the group
  * @param members - Current members, plus profiles for any former participants
  * @param memberUids - UIDs of the current members; defaults to every uid in `members`
+ * @param settlements - Repayments already made between members
  * @returns Array of member balances
  */
 export const calculateMemberBalances = (
     expenses: Expense[],
     members: User[],
-    memberUids: string[] = members.map((m) => m.uid)
+    memberUids: string[] = members.map((m) => m.uid),
+    settlements: Settlement[] = []
 ): MemberBalance[] => {
-    const balances = calculateBalancesByUid(expenses, memberUids);
+    const balances = calculateBalancesByUid(expenses, memberUids, settlements);
     const currentMembers = new Set(memberUids);
     const namesByUid = new Map(members.map((m) => [m.uid, m.name]));
 

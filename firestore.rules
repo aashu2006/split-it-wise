@@ -109,5 +109,29 @@ service cloud.firestore {
                     && (resource.data.createdBy == request.auth.uid
                         || isGroupAdmin(resource.data.groupId));
     }
+
+    // --- settlements --------------------------------------------------
+    // Repayments between members. Any member may record one, including on
+    // someone else's behalf, because whoever is holding the phone when the
+    // cash changes hands is the one who will log it.
+    match /settlements/{settlementId} {
+      allow read: if isGroupMember(resource.data.groupId);
+
+      allow create: if signedIn()
+                    && request.resource.data.createdBy == request.auth.uid
+                    && isGroupMember(request.resource.data.groupId)
+                    && request.resource.data.amount is number
+                    && request.resource.data.amount > 0
+                    && request.resource.data.from != request.resource.data.to
+                    && request.resource.data.from in groupData(request.resource.data.groupId).members
+                    && request.resource.data.to in groupData(request.resource.data.groupId).members;
+
+      // Recorded a payment wrongly? Delete it and record it again.
+      allow update: if false;
+
+      allow delete: if signedIn()
+                    && (resource.data.createdBy == request.auth.uid
+                        || isGroupAdmin(resource.data.groupId));
+    }
   }
 }

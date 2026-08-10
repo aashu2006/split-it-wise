@@ -1,4 +1,5 @@
-import { doc, getDoc, getDocs, collection, query, where, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, getDocs, collection, query, where, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { isValidUpiId } from "./upi";
 import { db } from "./firebase";
 import { User } from "@/types";
 import { User as FirebaseUser } from "firebase/auth";
@@ -37,6 +38,21 @@ export const getUserById = async (userId: string): Promise<User | null> => {
     }
 
     return snapshot.data() as User;
+};
+
+/**
+ * Save the signed-in user's UPI ID so others can pay them from a settle-up link
+ * @param userId - User ID (must be the signed-in user; rules enforce this)
+ * @param upiId - UPI ID, or an empty string to remove it
+ */
+export const saveUpiId = async (userId: string, upiId: string): Promise<void> => {
+    const trimmed = upiId.trim();
+    if (trimmed && !isValidUpiId(trimmed)) {
+        throw new Error("That doesn't look like a UPI ID. Example: name@okhdfcbank");
+    }
+
+    const userRef = doc(db, "users", userId);
+    await updateDoc(userRef, { upiId: trimmed });
 };
 
 /**
