@@ -20,6 +20,8 @@ open source, this is a friendly place to start.
 - Invite friends with a shareable link (works well over WhatsApp)
 - Join with one click
 - Admin controls: rename the group, remove members, delete the group
+- Turn the invite link off once everyone's in, since a forwarded link otherwise
+  works forever
 
 ### Expenses
 - Amounts in INR (₹)
@@ -117,6 +119,19 @@ NEXT_PUBLIC_FIREBASE_APP_ID=1:123456789:web:abc123
 ```
 
 `.env.local` is gitignored, so never commit it.
+
+There's one optional extra:
+
+```bash
+NEXT_PUBLIC_RECAPTCHA_SITE_KEY=6L...
+```
+
+Set it to turn on [App Check](https://firebase.google.com/docs/app-check), which
+stops anyone who lifts the config above from pointing the SDK at your project and
+running up its quota. Leave it out and the app works exactly as before, so you
+don't need one to develop locally. In production it's worth having: register the
+site under **App Check** in the Firebase console with reCAPTCHA v3, then switch
+on enforcement for Cloud Firestore — the key alone doesn't turn anything away.
 
 > These keys are **not secrets**. Anything prefixed `NEXT_PUBLIC_` is compiled into the
 > browser bundle and is visible to anyone using the site. That's normal for Firebase web

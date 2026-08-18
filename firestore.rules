@@ -51,23 +51,46 @@ service cloud.firestore {
     // --- groups -------------------------------------------------------
     match /groups/{groupId} {
 
-      // The admin may rename the group and remove members, but can never hand
-      // the group off or drop their own membership.
+      // Every field a group document is allowed to carry. Without this an
+      // invitee could bring along arbitrary extra fields on the way in, since
+      // an update only has to leave the named fields alone.
+      function groupFields() {
+        return ['name', 'adminId', 'members', 'joinOpen', 'createdAt', 'updatedAt'];
+      }
+
+      // Groups created before the invite link could be switched off have no
+      // joinOpen field at all, and count as open.
+      function invitesOpen(data) {
+        return data.get('joinOpen', true) == true;
+      }
+
+      // The admin may rename the group, remove members, and open or close the
+      // invite link, but can never hand the group off or drop their own
+      // membership.
       function adminEdit() {
         return signedIn()
                && resource.data.adminId == request.auth.uid
                && request.resource.data.adminId == resource.data.adminId
-               && request.resource.data.adminId in request.resource.data.members;
+               && request.resource.data.adminId in request.resource.data.members
+               && request.resource.data.keys().hasOnly(groupFields())
+               && request.resource.data.get('joinOpen', true) is bool
+               && request.resource.data.createdAt == resource.data.createdAt
+               && request.resource.data.updatedAt == request.time;
       }
 
       // An invitee adding themselves and changing nothing else. arrayUnion
       // appends, so the new list must equal the old one with the uid on the end.
       function selfJoin() {
         return signedIn()
+               && invitesOpen(resource.data)
                && !(request.auth.uid in resource.data.members)
                && request.resource.data.members == resource.data.members.concat([request.auth.uid])
                && request.resource.data.name == resource.data.name
-               && request.resource.data.adminId == resource.data.adminId;
+               && request.resource.data.adminId == resource.data.adminId
+               && request.resource.data.get('joinOpen', true) == resource.data.get('joinOpen', true)
+               && request.resource.data.keys().hasOnly(groupFields())
+               && request.resource.data.createdAt == resource.data.createdAt
+               && request.resource.data.updatedAt == request.time;
       }
 
       // Any signed-in user may fetch a group by id: /join/[groupId] needs the
@@ -82,7 +105,9 @@ service cloud.firestore {
 
       allow create: if signedIn()
                     && request.resource.data.adminId == request.auth.uid
-                    && request.resource.data.members == [request.auth.uid];
+                    && request.resource.data.members == [request.auth.uid]
+                    && request.resource.data.keys().hasOnly(groupFields())
+                    && request.resource.data.get('joinOpen', true) is bool;
 
       allow update: if adminEdit() || selfJoin();
 
