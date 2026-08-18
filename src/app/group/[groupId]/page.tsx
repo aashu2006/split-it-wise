@@ -3,7 +3,7 @@
 import { useAuth } from "@/context/AuthContext";
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { getGroup, updateGroupName, deleteGroup } from "@/lib/groups";
+import { getGroup, updateGroupName, deleteGroup, setGroupJoinOpen } from "@/lib/groups";
 import { getUsersByIds } from "@/lib/user";
 import { getGroupExpenses } from "@/lib/expenses";
 import { getGroupSettlements } from "@/lib/settlements";
@@ -47,6 +47,7 @@ export default function GroupDashboard() {
 
     // Invite link state
     const [inviteCopied, setInviteCopied] = useState(false);
+    const [togglingInvites, setTogglingInvites] = useState(false);
 
     const loadGroupData = async () => {
         if (authLoading) return;
@@ -169,6 +170,22 @@ export default function GroupDashboard() {
         }
     };
 
+    const handleToggleInvites = async () => {
+        if (!user || !group) return;
+
+        const next = !(group.joinOpen ?? true);
+        setTogglingInvites(true);
+
+        try {
+            await setGroupJoinOpen(groupId, next, user.uid);
+            setGroup({ ...group, joinOpen: next });
+        } catch (error: any) {
+            alert(error.message || "Failed to update the invite link");
+        } finally {
+            setTogglingInvites(false);
+        }
+    };
+
     const handleDeleteGroup = async () => {
         if (!user) return;
         setDeleting(true);
@@ -210,6 +227,7 @@ export default function GroupDashboard() {
     }
 
     const isAdmin = user?.uid === group.adminId;
+    const invitesOpen = group.joinOpen ?? true;
 
     return (
         <div className="min-h-screen bg-gray-50 pb-20">
@@ -270,13 +288,37 @@ export default function GroupDashboard() {
                             )}
                         </div>
 
-                        <button
-                            onClick={copyInviteLink}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm whitespace-nowrap"
-                        >
-                            {inviteCopied ? "✓ Copied!" : "📋 Copy Invite Link"}
-                        </button>
+                        <div className="flex flex-col items-end gap-1">
+                            <button
+                                onClick={copyInviteLink}
+                                disabled={!invitesOpen}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm whitespace-nowrap disabled:bg-gray-300 disabled:cursor-not-allowed"
+                            >
+                                {inviteCopied ? "✓ Copied!" : "📋 Copy Invite Link"}
+                            </button>
+
+                            {isAdmin ? (
+                                <button
+                                    onClick={handleToggleInvites}
+                                    disabled={togglingInvites}
+                                    className="text-xs text-gray-600 hover:text-gray-900 disabled:text-gray-400"
+                                >
+                                    {invitesOpen ? "Turn link off" : "Turn link on"}
+                                </button>
+                            ) : (
+                                !invitesOpen && (
+                                    <span className="text-xs text-gray-500">Invite link is off</span>
+                                )
+                            )}
+                        </div>
                     </div>
+
+                    {isAdmin && !invitesOpen && (
+                        <p className="mt-3 text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-md p-2">
+                            The invite link is off, so nobody new can join with it. Existing
+                            members are unaffected.
+                        </p>
+                    )}
 
                     {isAdmin && (
                         <div className="mt-4 pt-4 border-t border-gray-200">

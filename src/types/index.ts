@@ -14,6 +14,13 @@ export interface Group {
     name: string;
     adminId: string;
     members: string[]; // Array of user UIDs
+    /**
+     * Whether the invite link still works. The group id is the invite secret
+     * and can't be rotated, so this is the admin's off switch for a link that
+     * has been forwarded further than they meant it to go. Groups created
+     * before this existed have no such field and count as open.
+     */
+    joinOpen?: boolean;
     createdAt: Timestamp;
     updatedAt: Timestamp;
 }

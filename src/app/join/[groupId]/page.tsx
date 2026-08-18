@@ -44,6 +44,17 @@ export default function JoinGroupPage() {
                     return;
                 }
 
+                // Checked before writing so a closed link explains itself,
+                // rather than surfacing as the rules rejecting the update.
+                // Existing members are let through above either way.
+                if (group.joinOpen === false) {
+                    setError(
+                        "This invite link has been turned off. Ask the group admin to turn it back on."
+                    );
+                    setLoading(false);
+                    return;
+                }
+
                 // Add user to group
                 await addMemberToGroup(groupId, user.uid);
 

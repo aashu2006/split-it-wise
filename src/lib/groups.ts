@@ -31,6 +31,7 @@ export const createGroup = async (name: string, adminId: string): Promise<string
         name,
         adminId,
         members: [adminId], // Creator is automatically a member
+        joinOpen: true,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
     });
@@ -137,6 +138,34 @@ export const removeMemberFromGroup = async (
     const groupRef = doc(db, "groups", groupId);
     await updateDoc(groupRef, {
         members: arrayRemove(userId),
+        updatedAt: serverTimestamp(),
+    });
+};
+
+/**
+ * Turn the group's invite link on or off (admin only)
+ *
+ * The invite link is just the group id, so it can't be rotated: anyone who has
+ * ever seen it holds it forever, and removing a member doesn't stop them
+ * walking back in. Closing the group is the only revocation available without
+ * a backend to mint and expire real tokens.
+ *
+ * @param groupId - Group ID
+ * @param joinOpen - true to accept new members via the link, false to refuse
+ * @param requesterId - User ID making the request (must be admin)
+ */
+export const setGroupJoinOpen = async (
+    groupId: string,
+    joinOpen: boolean,
+    requesterId: string
+): Promise<void> => {
+    const group = await getGroup(groupId);
+    if (!group) throw new Error("Group not found");
+    if (group.adminId !== requesterId) throw new Error("Only admin can change the invite link");
+
+    const groupRef = doc(db, "groups", groupId);
+    await updateDoc(groupRef, {
+        joinOpen,
         updatedAt: serverTimestamp(),
     });
 };
