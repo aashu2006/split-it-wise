@@ -121,6 +121,25 @@ describe("calculateBalancesByUid", () => {
         expect(balances.c).toBe(60);
         expect(sum(Object.values(balances))).toBe(0);
     });
+
+    // Security rules can't type-check the values of a splits map, so a member
+    // writing straight to Firestore can store a share that isn't a number. It
+    // must not turn every other balance in the group into NaN.
+    it("ignores a split value that isn't a real number", () => {
+        const expenses = [
+            expense({
+                paidBy: "a",
+                amount: 90,
+                splits: { a: 30, b: "oops" as unknown as number, c: 30 },
+            }),
+        ];
+        const balances = calculateBalancesByUid(expenses, MEMBER_UIDS);
+
+        expect(balances.a).toBe(60);
+        expect(balances.b).toBe(0);
+        expect(balances.c).toBe(-30);
+        expect(Object.values(balances).every(Number.isFinite)).toBe(true);
+    });
 });
 
 describe("settlements", () => {

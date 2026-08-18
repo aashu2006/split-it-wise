@@ -6,8 +6,16 @@ import { Expense, MemberBalance, Settlement, Transfer, User } from "@/types";
  * 33.33 each, which is a paisa short of what the payer actually put in — and
  * the error compounds over a group's history until the balances stop summing
  * to zero. Working in paise and handing out the remainder keeps them exact.
+ *
+ * Non-finite input is floored to 0 rather than allowed through. Security rules
+ * can't type-check the values of a splits map, so a member can write a share
+ * the UI would never produce; letting that become NaN here would spread
+ * through every balance in the group.
  */
-const toPaise = (rupees: number): number => Math.round(rupees * 100);
+const toPaise = (rupees: number): number => {
+    const paise = Math.round(Number(rupees) * 100);
+    return Number.isFinite(paise) ? paise : 0;
+};
 const toRupees = (paise: number): number => paise / 100;
 
 /**
