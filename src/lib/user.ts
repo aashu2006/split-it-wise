@@ -1,4 +1,4 @@
-import { doc, getDoc, getDocs, collection, query, where, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { isValidUpiId } from "./upi";
 import { db } from "./firebase";
 import { User } from "@/types";
@@ -63,20 +63,15 @@ export const saveUpiId = async (userId: string, upiId: string): Promise<void> =>
 export const getUsersByIds = async (userIds: string[]): Promise<User[]> => {
     if (userIds.length === 0) return [];
 
-    const users: User[] = [];
+    // Fetched one document at a time rather than with a `where("uid", "in", ...)`
+    // query: that query needs list permission on /users, and list is all or
+    // nothing, so granting it would also allow reading the whole collection.
+    // Groups are small, and the lookups run in parallel.
+    const snapshots = await Promise.all(
+        userIds.map((userId) => getDoc(doc(db, "users", userId)))
+    );
 
-    // Firestore 'in' queries are limited to 10 items, so we batch them
-    const batchSize = 10;
-    for (let i = 0; i < userIds.length; i += batchSize) {
-        const batch = userIds.slice(i, i + batchSize);
-        const usersRef = collection(db, "users");
-        const q = query(usersRef, where("uid", "in", batch));
-        const snapshot = await getDocs(q);
-
-        snapshot.docs.forEach((doc) => {
-            users.push(doc.data() as User);
-        });
-    }
-
-    return users;
+    return snapshots
+        .filter((snapshot) => snapshot.exists())
+        .map((snapshot) => snapshot.data() as User);
 };

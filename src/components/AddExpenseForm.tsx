@@ -218,6 +218,10 @@ export default function AddExpenseForm({
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="e.g., Groceries, Dinner, Movie tickets"
+                    // Security rules cap the stored description at 200
+                    // characters; stop here so a long one is trimmed as it is
+                    // typed rather than rejected as a permission error on save.
+                    maxLength={200}
                     className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
                     disabled={loading}
                     required

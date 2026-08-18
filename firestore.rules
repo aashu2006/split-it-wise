@@ -27,10 +27,13 @@ service cloud.firestore {
     }
 
     // --- users --------------------------------------------------------
-    // Readable by any signed-in user: getUsersByIds() reads this collection to
-    // resolve member names and avatars for a group.
+    // Fetchable one document at a time by any signed-in user: getUsersByIds()
+    // resolves member names and avatars that way. Listing stays closed, because
+    // `read` would also permit getDocs(collection(db, "users")) — a dump of
+    // every user's name, email and UPI ID to anyone with a Google account.
     match /users/{userId} {
-      allow read: if signedIn();
+      allow get: if signedIn();
+      allow list: if false;
 
       allow create: if signedIn()
                     && request.auth.uid == userId
@@ -97,7 +100,11 @@ service cloud.firestore {
                     && request.resource.data.amount > 0
                     && request.resource.data.paidBy in groupData(request.resource.data.groupId).members
                     && request.resource.data.splitType in ['equal', 'exact', 'percentage']
-                    && request.resource.data.splits.keys().hasOnly(groupData(request.resource.data.groupId).members);
+                    && request.resource.data.splits.keys().hasOnly(groupData(request.resource.data.groupId).members)
+                    && request.resource.data.description is string
+                    && request.resource.data.description.size() <= 200
+                    && request.resource.data.amount < 10000000
+                    && request.resource.data.createdAt == request.time;
 
       // There is no edit-expense flow in the app; delete and re-add instead.
       allow update: if false;
@@ -129,8 +136,13 @@ service cloud.firestore {
       // Recorded a payment wrongly? Delete it and record it again.
       allow update: if false;
 
+      // Either side of the payment can delete it too. Only the creator or the
+      // admin being able to would let a member record a repayment they never
+      // made, wiping their own debt, with the payee unable to take it back.
       allow delete: if signedIn()
                     && (resource.data.createdBy == request.auth.uid
+                        || resource.data.to == request.auth.uid
+                        || resource.data.from == request.auth.uid
                         || isGroupAdmin(resource.data.groupId));
     }
   }
