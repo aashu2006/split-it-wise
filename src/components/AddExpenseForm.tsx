@@ -1,15 +1,20 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Timestamp } from "firebase/firestore";
 import { addExpense } from "@/lib/expenses";
 import { splitEqually, splitByPercentage } from "@/lib/calculations";
-import { User, SplitType } from "@/types";
+import { Expense, User, SplitType } from "@/types";
 
 interface AddExpenseFormProps {
     groupId: string;
     members: User[];
     currentUserId: string;
-    onExpenseAdded: () => void;
+    /**
+     * Passed the expense as it was stored, so the caller can add it to its list
+     * without refetching the group.
+     */
+    onExpenseAdded: (expense: Expense) => void;
 }
 
 export default function AddExpenseForm({
@@ -151,7 +156,7 @@ export default function AddExpenseForm({
         setLoading(true);
 
         try {
-            await addExpense(
+            const expenseId = await addExpense(
                 groupId,
                 amountNum,
                 description.trim(),
@@ -161,6 +166,23 @@ export default function AddExpenseForm({
                 splits
             );
 
+            // Built before the reset below clears the fields it reads. The
+            // amount mirrors what addExpense() actually stored, and createdAt is
+            // a local stand-in for the serverTimestamp() we can't see from here
+            // — it only drives the displayed date and the list order, and this
+            // expense sorts to the top either way.
+            const created: Expense = {
+                id: expenseId,
+                groupId,
+                amount: Number(amountNum.toFixed(2)),
+                description: description.trim(),
+                paidBy,
+                createdBy: currentUserId,
+                splitType,
+                splits,
+                createdAt: Timestamp.now(),
+            };
+
             // Reset form
             setAmount("");
             setDescription("");
@@ -169,7 +191,7 @@ export default function AddExpenseForm({
             setSelectedMembers(new Set(members.map((m) => m.uid)));
             setExactAmounts(Object.fromEntries(members.map((m) => [m.uid, ""])));
             setPercentages(Object.fromEntries(members.map((m) => [m.uid, ""])));
-            onExpenseAdded();
+            onExpenseAdded(created);
         } catch (err: any) {
             setError(err.message || "Failed to add expense");
         } finally {

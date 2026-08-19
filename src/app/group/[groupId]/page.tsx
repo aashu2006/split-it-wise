@@ -1,14 +1,15 @@
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { getGroup, updateGroupName, deleteGroup, setGroupJoinOpen } from "@/lib/groups";
 import { getUsersByIds } from "@/lib/user";
 import { getGroupExpenses } from "@/lib/expenses";
 import { getGroupSettlements } from "@/lib/settlements";
+import { useToast } from "@/context/ToastContext";
 import { calculateMemberBalances, calculateBalancesByUid, simplifyDebts } from "@/lib/calculations";
-import { Group, User, Expense, MemberBalance, Settlement, Transfer } from "@/types";
+import { Group, User, Expense, Settlement, Transfer } from "@/types";
 import MembersList from "@/components/MembersList";
 import ConfirmModal from "@/components/ConfirmModal";
 import AddExpenseModal from "@/components/AddExpenseModal";
@@ -24,19 +25,19 @@ export default function GroupDashboard() {
     const groupId = params.groupId as string;
 
     const [group, setGroup] = useState<Group | null>(null);
-    const [members, setMembers] = useState<User[]>([]);
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [settlements, setSettlements] = useState<Settlement[]>([]);
-    const [balances, setBalances] = useState<MemberBalance[]>([]);
-    const [transfers, setTransfers] = useState<Transfer[]>([]);
     const [settlingTransfer, setSettlingTransfer] = useState<Transfer | null>(null);
     const [ledgerProfiles, setLedgerProfiles] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const { showToast } = useToast();
 
     // Rename group state
     const [isRenaming, setIsRenaming] = useState(false);
     const [newGroupName, setNewGroupName] = useState("");
+    const [renaming, setRenaming] = useState(false);
+    const [renameError, setRenameError] = useState("");
 
     // Delete group state
     const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -48,6 +49,8 @@ export default function GroupDashboard() {
     // Invite link state
     const [inviteCopied, setInviteCopied] = useState(false);
     const [togglingInvites, setTogglingInvites] = useState(false);
+    // Set only when copying failed, so the link can be selected by hand.
+    const [inviteFallback, setInviteFallback] = useState<string | null>(null);
 
     const loadGroupData = async () => {
         if (authLoading) return;
@@ -94,24 +97,7 @@ export default function GroupDashboard() {
                 participants.add(settlement.from);
                 participants.add(settlement.to);
             });
-            const profiles = await getUsersByIds([...participants]);
-            const currentMembers = new Set(groupData.members);
-            setLedgerProfiles(profiles);
-            setMembers(profiles.filter((profile) => currentMembers.has(profile.uid)));
-
-            // Calculate balances, then turn them into actual payments to make
-            const memberBalances = calculateMemberBalances(
-                groupExpenses,
-                profiles,
-                groupData.members,
-                groupSettlements
-            );
-            setBalances(memberBalances);
-            setTransfers(
-                simplifyDebts(
-                    calculateBalancesByUid(groupExpenses, groupData.members, groupSettlements)
-                )
-            );
+            setLedgerProfiles(await getUsersByIds([...participants]));
 
             setLoading(false);
         } catch (err) {
@@ -124,6 +110,63 @@ export default function GroupDashboard() {
     useEffect(() => {
         loadGroupData();
     }, [user, authLoading, groupId, router]);
+
+    // Derived rather than stored, so a mutation only has to update the list it
+    // touched: balances, transfers and the member list follow on their own.
+    // Storing them meant every delete had to refetch the whole group to stay
+    // consistent, which is why the ledger used to lag a second behind the tap.
+    const members = useMemo(() => {
+        if (!group) return [];
+        const current = new Set(group.members);
+        return ledgerProfiles.filter((profile) => current.has(profile.uid));
+    }, [group, ledgerProfiles]);
+
+    const balances = useMemo(
+        () =>
+            group
+                ? calculateMemberBalances(expenses, ledgerProfiles, group.members, settlements)
+                : [],
+        [expenses, ledgerProfiles, group, settlements]
+    );
+
+    const transfers = useMemo(
+        () =>
+            group
+                ? simplifyDebts(calculateBalancesByUid(expenses, group.members, settlements))
+                : [],
+        [expenses, group, settlements]
+    );
+
+    // Applied locally instead of refetching. The write has already been
+    // acknowledged by Firestore at this point, so the local list and the server
+    // agree; a reload would only cost a round trip to learn the same thing.
+    const handleExpenseAdded = (expense: Expense) =>
+        setExpenses((current) => [expense, ...current]);
+
+    const handleExpenseDeleted = (expenseId: string) =>
+        setExpenses((current) => current.filter((expense) => expense.id !== expenseId));
+
+    const handleSettled = (settlement: Settlement) =>
+        setSettlements((current) => [settlement, ...current]);
+
+    const handleSettlementDeleted = (settlementId: string) =>
+        setSettlements((current) =>
+            current.filter((settlement) => settlement.id !== settlementId)
+        );
+
+    const handleMemberRemoved = (userId: string) =>
+        setGroup((current) =>
+            current
+                ? { ...current, members: current.members.filter((uid) => uid !== userId) }
+                : current
+        );
+
+    const handleProfileUpdated = (upiId: string) =>
+        setLedgerProfiles((current) =>
+            current.map((profile) =>
+                profile.uid === user?.uid ? { ...profile, upiId } : profile
+            )
+        );
 
     const copyInviteLink = async () => {
         const inviteLink = `${window.location.origin}/join/${groupId}`;
@@ -145,28 +188,35 @@ export default function GroupDashboard() {
                 if (!copied) throw new Error("Copy command was rejected");
             }
 
+            setInviteFallback(null);
             setInviteCopied(true);
             setTimeout(() => setInviteCopied(false), 2000);
         } catch {
-            // Last resort: show the link so it can be copied by hand rather than
-            // claiming success when nothing reached the clipboard.
-            prompt("Copy this invite link:", inviteLink);
+            // Last resort: show the link in the page so it can be selected by
+            // hand, rather than claiming success when nothing reached the
+            // clipboard. A native prompt() here looked like a browser error.
+            setInviteFallback(inviteLink);
         }
     };
 
     const handleRenameGroup = async () => {
         if (!user || !group) return;
+
+        setRenameError("");
         if (!newGroupName.trim()) {
-            alert("Group name cannot be empty");
+            setRenameError("Group name can't be empty");
             return;
         }
 
+        setRenaming(true);
         try {
             await updateGroupName(groupId, newGroupName.trim(), user.uid);
             setGroup({ ...group, name: newGroupName.trim() });
             setIsRenaming(false);
         } catch (error: any) {
-            alert(error.message || "Failed to rename group");
+            setRenameError(error.message || "Failed to rename group");
+        } finally {
+            setRenaming(false);
         }
     };
 
@@ -180,7 +230,7 @@ export default function GroupDashboard() {
             await setGroupJoinOpen(groupId, next, user.uid);
             setGroup({ ...group, joinOpen: next });
         } catch (error: any) {
-            alert(error.message || "Failed to update the invite link");
+            showToast(error.message || "Failed to update the invite link");
         } finally {
             setTogglingInvites(false);
         }
@@ -194,7 +244,7 @@ export default function GroupDashboard() {
             await deleteGroup(groupId, user.uid);
             router.push("/");
         } catch (error: any) {
-            alert(error.message || "Failed to delete group");
+            showToast(error.message || "Failed to delete group");
             setDeleting(false);
             setShowDeleteModal(false);
         }
@@ -244,29 +294,46 @@ export default function GroupDashboard() {
                     <div className="flex items-start justify-between gap-4">
                         <div className="flex-1">
                             {isRenaming ? (
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="text"
-                                        value={newGroupName}
-                                        onChange={(e) => setNewGroupName(e.target.value)}
-                                        className="text-2xl font-bold text-gray-900 border-b-2 border-blue-600 focus:outline-none"
-                                        autoFocus
-                                    />
-                                    <button
-                                        onClick={handleRenameGroup}
-                                        className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                                    >
-                                        Save
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            setIsRenaming(false);
-                                            setNewGroupName(group.name);
-                                        }}
-                                        className="text-sm text-gray-600 hover:text-gray-700"
-                                    >
-                                        Cancel
-                                    </button>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="text"
+                                            value={newGroupName}
+                                            onChange={(e) => setNewGroupName(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === "Enter") handleRenameGroup();
+                                                if (e.key === "Escape") {
+                                                    setIsRenaming(false);
+                                                    setNewGroupName(group.name);
+                                                    setRenameError("");
+                                                }
+                                            }}
+                                            className="text-2xl font-bold text-gray-900 border-b-2 border-blue-600 focus:outline-none disabled:opacity-50"
+                                            disabled={renaming}
+                                            autoFocus
+                                        />
+                                        <button
+                                            onClick={handleRenameGroup}
+                                            disabled={renaming}
+                                            className="text-sm text-blue-600 hover:text-blue-700 font-medium disabled:text-gray-400"
+                                        >
+                                            {renaming ? "Saving..." : "Save"}
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setIsRenaming(false);
+                                                setNewGroupName(group.name);
+                                                setRenameError("");
+                                            }}
+                                            disabled={renaming}
+                                            className="text-sm text-gray-600 hover:text-gray-700 disabled:text-gray-400"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                    {renameError && (
+                                        <p className="text-sm text-red-600 mt-1">{renameError}</p>
+                                    )}
                                 </div>
                             ) : (
                                 <div className="flex items-center gap-3">
@@ -313,6 +380,31 @@ export default function GroupDashboard() {
                         </div>
                     </div>
 
+                    {inviteFallback && (
+                        <div className="mt-3 bg-amber-50 border border-amber-200 rounded-md p-3">
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                                <p className="text-xs text-amber-900">
+                                    Couldn&apos;t reach the clipboard. Copy the link by hand:
+                                </p>
+                                <button
+                                    onClick={() => setInviteFallback(null)}
+                                    className="text-amber-900 text-lg leading-none opacity-60 hover:opacity-100"
+                                    aria-label="Dismiss"
+                                >
+                                    ×
+                                </button>
+                            </div>
+                            <input
+                                type="text"
+                                value={inviteFallback}
+                                readOnly
+                                onFocus={(e) => e.currentTarget.select()}
+                                className="w-full px-2 py-1 text-xs bg-white border border-amber-300 rounded text-gray-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                autoFocus
+                            />
+                        </div>
+                    )}
+
                     {isAdmin && !invitesOpen && (
                         <p className="mt-3 text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-md p-2">
                             The invite link is off, so nobody new can join with it. Existing
@@ -352,7 +444,7 @@ export default function GroupDashboard() {
                         groupId={groupId}
                         isAdmin={isAdmin}
                         onSettle={setSettlingTransfer}
-                        onSettlementDeleted={loadGroupData}
+                        onSettlementDeleted={handleSettlementDeleted}
                     />
                 </div>
 
@@ -375,7 +467,7 @@ export default function GroupDashboard() {
                         currentUserId={user?.uid || ""}
                         groupId={groupId}
                         isAdmin={isAdmin}
-                        onExpenseDeleted={loadGroupData}
+                        onExpenseDeleted={handleExpenseDeleted}
                     />
                 </div>
 
@@ -390,8 +482,8 @@ export default function GroupDashboard() {
                         adminId={group.adminId}
                         currentUserId={user?.uid || ""}
                         groupId={groupId}
-                        onMemberRemoved={loadGroupData}
-                        onProfileUpdated={loadGroupData}
+                        onMemberRemoved={handleMemberRemoved}
+                        onProfileUpdated={handleProfileUpdated}
                     />
                 </div>
             </main>
@@ -403,7 +495,7 @@ export default function GroupDashboard() {
                 groupId={groupId}
                 members={members}
                 currentUserId={user?.uid || ""}
-                onExpenseAdded={loadGroupData}
+                onExpenseAdded={handleExpenseAdded}
             />
 
             {/* Settle Up Modal */}
@@ -414,7 +506,7 @@ export default function GroupDashboard() {
                 groupId={groupId}
                 groupName={group.name}
                 onClose={() => setSettlingTransfer(null)}
-                onSettled={loadGroupData}
+                onSettled={handleSettled}
             />
 
             {/* Delete Group Confirmation Modal */}
