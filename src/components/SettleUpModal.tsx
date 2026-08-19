@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { Timestamp } from "firebase/firestore";
 import { addSettlement } from "@/lib/settlements";
 import { buildUpiLink } from "@/lib/upi";
-import { Transfer, User } from "@/types";
+import { Settlement, Transfer, User } from "@/types";
 
 interface SettleUpModalProps {
     transfer: Transfer | null;
@@ -12,7 +13,11 @@ interface SettleUpModalProps {
     groupId: string;
     groupName: string;
     onClose: () => void;
-    onSettled: () => void;
+    /**
+     * Passed the settlement as it was stored, so the caller can add it to its
+     * list without refetching the group.
+     */
+    onSettled: (settlement: Settlement) => void;
 }
 
 export default function SettleUpModal({
@@ -55,9 +60,25 @@ export default function SettleUpModal({
 
         setLoading(true);
         try {
-            await addSettlement(groupId, transfer.from, transfer.to, amountNum, currentUserId);
+            const settlementId = await addSettlement(
+                groupId,
+                transfer.from,
+                transfer.to,
+                amountNum,
+                currentUserId
+            );
             setAmount("");
-            onSettled();
+            // createdAt is a local stand-in for the serverTimestamp() written
+            // server-side; it only affects where this lands in the list.
+            onSettled({
+                id: settlementId,
+                groupId,
+                from: transfer.from,
+                to: transfer.to,
+                amount: Number(amountNum.toFixed(2)),
+                createdBy: currentUserId,
+                createdAt: Timestamp.now(),
+            });
             onClose();
         } catch (err: any) {
             setError(err.message || "Failed to record the payment");

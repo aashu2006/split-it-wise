@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import AddExpenseForm from "./AddExpenseForm";
-import { User } from "@/types";
+import { Expense, User } from "@/types";
 
 interface AddExpenseModalProps {
     isOpen: boolean;
@@ -10,7 +10,7 @@ interface AddExpenseModalProps {
     groupId: string;
     members: User[];
     currentUserId: string;
-    onExpenseAdded: () => void;
+    onExpenseAdded: (expense: Expense) => void;
 }
 
 export default function AddExpenseModal({
@@ -21,15 +21,15 @@ export default function AddExpenseModal({
     currentUserId,
     onExpenseAdded,
 }: AddExpenseModalProps) {
-    const handleExpenseAdded = () => {
-        onExpenseAdded();
+    const handleExpenseAdded = (expense: Expense) => {
+        onExpenseAdded(expense);
         onClose();
     };
 
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-2xl font-bold text-gray-900">Add Expense</h2>

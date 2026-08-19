@@ -3,6 +3,8 @@
 import { MemberBalance, User } from "@/types";
 import { removeMemberFromGroup } from "@/lib/groups";
 import { saveUpiId } from "@/lib/user";
+import { useToast } from "@/context/ToastContext";
+import ConfirmModal from "./ConfirmModal";
 import { useState } from "react";
 
 interface MembersListProps {
@@ -11,8 +13,10 @@ interface MembersListProps {
     adminId: string;
     currentUserId: string;
     groupId: string;
-    onMemberRemoved: () => void;
-    onProfileUpdated: () => void;
+    /** Passed the uid so the caller can drop them locally without refetching. */
+    onMemberRemoved: (userId: string) => void;
+    /** Passed the saved value so the caller can patch its own profile copy. */
+    onProfileUpdated: (upiId: string) => void;
 }
 
 /**
@@ -27,7 +31,7 @@ function UpiIdField({
 }: {
     currentUserId: string;
     upiId?: string;
-    onSaved: () => void;
+    onSaved: (upiId: string) => void;
 }) {
     const [editing, setEditing] = useState(false);
     const [value, setValue] = useState(upiId || "");
@@ -38,9 +42,10 @@ function UpiIdField({
         setError("");
         setSaving(true);
         try {
-            await saveUpiId(currentUserId, value);
+            const saved = value.trim();
+            await saveUpiId(currentUserId, saved);
             setEditing(false);
-            onSaved();
+            onSaved(saved);
         } catch (err: any) {
             setError(err.message || "Failed to save");
         } finally {
@@ -104,6 +109,8 @@ export default function MembersList({
     onProfileUpdated,
 }: MembersListProps) {
     const [removing, setRemoving] = useState<string | null>(null);
+    const [pendingRemoval, setPendingRemoval] = useState<User | null>(null);
+    const { showToast } = useToast();
     const isAdmin = currentUserId === adminId;
 
     const balanceByUid = new Map(balances.map((b) => [b.uid, b.balance]));
@@ -118,86 +125,102 @@ export default function MembersList({
             : `Owes ₹${Math.abs(balance).toFixed(2)} — settle up before removing`;
     };
 
-    const handleRemoveMember = async (userId: string, userName: string) => {
-        if (!confirm(`Remove ${userName} from the group?`)) return;
+    const handleRemoveMember = async (member: User) => {
+        setPendingRemoval(null);
+        setRemoving(member.uid);
 
-        setRemoving(userId);
         try {
-            await removeMemberFromGroup(groupId, userId, currentUserId);
-            onMemberRemoved();
+            await removeMemberFromGroup(groupId, member.uid, currentUserId);
+            onMemberRemoved(member.uid);
         } catch (error: any) {
-            alert(error.message || "Failed to remove member");
+            showToast(error.message || "Failed to remove member");
         } finally {
             setRemoving(null);
         }
     };
 
     return (
-        <div className="space-y-3">
-            {members.map((member) => (
-                <div
-                    key={member.uid}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                >
-                    <div className="flex items-center gap-3">
-                        {member.photoURL ? (
-                            <img
-                                src={member.photoURL}
-                                alt={member.name}
-                                className="w-10 h-10 rounded-full"
-                            />
-                        ) : (
-                            <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold">
-                                {member.name.charAt(0).toUpperCase()}
-                            </div>
-                        )}
-                        <div>
-                            <div className="font-medium text-gray-900">
-                                {member.name}
-                                {member.uid === adminId && (
-                                    <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
-                                        Admin
-                                    </span>
-                                )}
-                            </div>
-                            {member.uid === currentUserId && (
-                                <div className="text-sm text-gray-600">{member.email}</div>
-                            )}
-                            {member.uid === currentUserId ? (
-                                <UpiIdField
-                                    currentUserId={currentUserId}
-                                    upiId={member.upiId}
-                                    onSaved={onProfileUpdated}
+        <>
+            <div className="space-y-3">
+                {members.map((member) => (
+                    <div
+                        key={member.uid}
+                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                    >
+                        <div className="flex items-center gap-3">
+                            {member.photoURL ? (
+                                <img
+                                    src={member.photoURL}
+                                    alt={member.name}
+                                    className="w-10 h-10 rounded-full"
                                 />
                             ) : (
-                                member.upiId && (
-                                    <div className="text-xs text-gray-500 mt-0.5">
-                                        UPI: {member.upiId}
-                                    </div>
-                                )
-                            )}
-                        </div>
-                    </div>
-
-                    {isAdmin && member.uid !== adminId && (
-                        <div className="text-right">
-                            <button
-                                onClick={() => handleRemoveMember(member.uid, member.name)}
-                                disabled={removing === member.uid || settleFirst(member.uid) !== null}
-                                title={settleFirst(member.uid) ?? undefined}
-                                className="text-red-600 hover:text-red-700 text-sm font-medium disabled:text-gray-400 disabled:cursor-not-allowed"
-                            >
-                                {removing === member.uid ? "Removing..." : "Remove"}
-                            </button>
-                            {settleFirst(member.uid) && (
-                                <div className="text-xs text-gray-500 mt-0.5">
-                                    Settle up first
+                                <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold">
+                                    {member.name.charAt(0).toUpperCase()}
                                 </div>
                             )}
+                            <div>
+                                <div className="font-medium text-gray-900">
+                                    {member.name}
+                                    {member.uid === adminId && (
+                                        <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
+                                            Admin
+                                        </span>
+                                    )}
+                                </div>
+                                {member.uid === currentUserId && (
+                                    <div className="text-sm text-gray-600">{member.email}</div>
+                                )}
+                                {member.uid === currentUserId ? (
+                                    <UpiIdField
+                                        currentUserId={currentUserId}
+                                        upiId={member.upiId}
+                                        onSaved={onProfileUpdated}
+                                    />
+                                ) : (
+                                    member.upiId && (
+                                        <div className="text-xs text-gray-500 mt-0.5">
+                                            UPI: {member.upiId}
+                                        </div>
+                                    )
+                                )}
+                            </div>
                         </div>
-                    )}
-                </div>
-            ))}
-        </div>
+
+                        {isAdmin && member.uid !== adminId && (
+                            <div className="text-right">
+                                <button
+                                    onClick={() => setPendingRemoval(member)}
+                                    disabled={removing === member.uid || settleFirst(member.uid) !== null}
+                                    title={settleFirst(member.uid) ?? undefined}
+                                    className="text-red-600 hover:text-red-700 text-sm font-medium disabled:text-gray-400 disabled:cursor-not-allowed"
+                                >
+                                    {removing === member.uid ? "Removing..." : "Remove"}
+                                </button>
+                                {settleFirst(member.uid) && (
+                                    <div className="text-xs text-gray-500 mt-0.5">
+                                        Settle up first
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </div>
+
+            <ConfirmModal
+                isOpen={pendingRemoval !== null}
+                title="Remove member"
+                message={
+                    pendingRemoval
+                        ? `Remove ${pendingRemoval.name} from the group? They keep their place in the expense history, so past splits stay as they are.`
+                        : ""
+                }
+                confirmText="Remove"
+                onConfirm={() => pendingRemoval && handleRemoveMember(pendingRemoval)}
+                onCancel={() => setPendingRemoval(null)}
+                danger
+            />
+        </>
     );
 }

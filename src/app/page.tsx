@@ -13,16 +13,21 @@ export default function Home() {
   const router = useRouter();
   const [groups, setGroups] = useState<Group[]>([]);
   const [loadingGroups, setLoadingGroups] = useState(true);
+  const [groupsError, setGroupsError] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   const loadGroups = async () => {
     if (!user) return;
     setLoadingGroups(true);
+    setGroupsError("");
     try {
       const userGroups = await getUserGroups(user.uid);
       setGroups(userGroups);
     } catch (error) {
       console.error("Error loading groups:", error);
+      // Said out loud rather than only in the console: an empty page with no
+      // explanation reads as "you have no groups", which is a different thing.
+      setGroupsError("Couldn't load your groups. Check your connection and try again.");
     } finally {
       setLoadingGroups(false);
     }
@@ -106,6 +111,16 @@ export default function Home() {
 
         {loadingGroups ? (
           <div className="text-center py-12 text-gray-600">Loading groups...</div>
+        ) : groupsError ? (
+          <div className="text-center py-12">
+            <p className="text-red-600 mb-4">{groupsError}</p>
+            <button
+              onClick={loadGroups}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+            >
+              Try again
+            </button>
+          </div>
         ) : groups.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-600 mb-4">You haven't joined any groups yet</p>
