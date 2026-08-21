@@ -41,7 +41,7 @@ function UpiIdField({ currentUserId, upiId, onSaved }) {
         return (
             <button
                 onClick={() => setEditing(true)}
-                className="text-xs text-blue-600 hover:text-blue-700 mt-0.5"
+                className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 mt-0.5"
             >
                 {upiId ? `UPI: ${upiId} (edit)` : "+ Add your UPI ID"}
             </button>
@@ -56,14 +56,14 @@ function UpiIdField({ currentUserId, upiId, onSaved }) {
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
                     placeholder="name@okhdfcbank"
-                    className="px-2 py-1 border border-gray-300 rounded text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="px-2 py-1 border border-input rounded text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-blue-500"
                     disabled={saving}
                     autoFocus
                 />
                 <button
                     onClick={handleSave}
                     disabled={saving}
-                    className="text-xs text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
+                    className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium disabled:opacity-50"
                 >
                     {saving ? "..." : "Save"}
                 </button>
@@ -73,12 +73,12 @@ function UpiIdField({ currentUserId, upiId, onSaved }) {
                         setValue(upiId || "");
                         setError("");
                     }}
-                    className="text-xs text-gray-500 hover:text-gray-700"
+                    className="text-xs text-muted-foreground hover:text-foreground"
                 >
                     Cancel
                 </button>
             </div>
-            {error && <div className="text-xs text-red-600 mt-0.5">{error}</div>}
+            {error && <div className="text-xs text-red-600 dark:text-red-400 mt-0.5">{error}</div>}
         </div>
     );
 }
@@ -141,7 +141,7 @@ export default function MembersList({
                 {members.map((member) => (
                     <div
                         key={member.uid}
-                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                        className="flex items-center justify-between p-3 bg-muted rounded-lg"
                     >
                         <div className="flex items-center gap-3">
                             {member.photoURL ? (
@@ -156,16 +156,16 @@ export default function MembersList({
                                 </div>
                             )}
                             <div>
-                                <div className="font-medium text-gray-900">
+                                <div className="font-medium text-foreground">
                                     {member.name}
                                     {member.uid === adminId && (
-                                        <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
+                                        <span className="ml-2 text-xs bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded">
                                             Admin
                                         </span>
                                     )}
                                 </div>
                                 {member.uid === currentUserId && (
-                                    <div className="text-sm text-gray-600">{member.email}</div>
+                                    <div className="text-sm text-muted-foreground">{member.email}</div>
                                 )}
                                 {member.uid === currentUserId ? (
                                     <UpiIdField
@@ -175,7 +175,7 @@ export default function MembersList({
                                     />
                                 ) : (
                                     member.upiId && (
-                                        <div className="text-xs text-gray-500 mt-0.5">
+                                        <div className="text-xs text-muted-foreground mt-0.5">
                                             UPI: {member.upiId}
                                         </div>
                                     )
@@ -189,12 +189,12 @@ export default function MembersList({
                                     onClick={() => setPendingRemoval(member)}
                                     disabled={removing === member.uid || settleFirst(member.uid) !== null}
                                     title={settleFirst(member.uid) ?? undefined}
-                                    className="text-red-600 hover:text-red-700 text-sm font-medium disabled:text-gray-400 disabled:cursor-not-allowed"
+                                    className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-sm font-medium disabled:text-muted-foreground disabled:cursor-not-allowed"
                                 >
                                     {removing === member.uid ? "Removing..." : "Remove"}
                                 </button>
                                 {settleFirst(member.uid) && (
-                                    <div className="text-xs text-gray-500 mt-0.5">
+                                    <div className="text-xs text-muted-foreground mt-0.5">
                                         Settle up first
                                     </div>
                                 )}

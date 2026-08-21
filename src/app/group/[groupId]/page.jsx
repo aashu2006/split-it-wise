@@ -16,6 +16,7 @@ import ExpenseList from "@/components/ExpenseList";
 import BalanceSummary from "@/components/BalanceSummary";
 import SettleUp from "@/components/SettleUp";
 import SettleUpModal from "@/components/SettleUpModal";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function GroupDashboard() {
     const { user, loading: authLoading } = useAuth();
@@ -252,16 +253,16 @@ export default function GroupDashboard() {
     if (authLoading || loading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
-                <div className="text-gray-600">Loading...</div>
+                <div className="text-muted-foreground">Loading...</div>
             </div>
         );
     }
 
     if (error || !group) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+            <div className="min-h-screen flex items-center justify-center bg-background p-4">
                 <div className="text-center max-w-md">
-                    <div className="text-red-600 mb-4 text-lg font-medium">
+                    <div className="text-red-600 dark:text-red-400 mb-4 text-lg font-medium">
                         {error || "Group not found"}
                     </div>
                     <button
@@ -279,16 +280,19 @@ export default function GroupDashboard() {
     const invitesOpen = group.joinOpen ?? true;
 
     return (
-        <div className="min-h-screen bg-gray-50 pb-20">
+        <div className="min-h-screen bg-background pb-20">
             {/* Header */}
-            <header className="bg-white border-b border-gray-200">
+            <header className="bg-card border-b border-border">
                 <div className="max-w-4xl mx-auto px-4 py-4">
-                    <button
-                        onClick={() => router.push("/")}
-                        className="text-blue-600 hover:text-blue-700 mb-3 flex items-center gap-1 text-sm"
-                    >
-                        <span>←</span> Back to Groups
-                    </button>
+                    <div className="flex items-center justify-between mb-3">
+                        <button
+                            onClick={() => router.push("/")}
+                            className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1 text-sm"
+                        >
+                            <span>←</span> Back to Groups
+                        </button>
+                        <ThemeToggle />
+                    </div>
 
                     <div className="flex items-start justify-between gap-4">
                         <div className="flex-1">
@@ -307,14 +311,14 @@ export default function GroupDashboard() {
                                                     setRenameError("");
                                                 }
                                             }}
-                                            className="text-2xl font-bold text-gray-900 border-b-2 border-blue-600 focus:outline-none disabled:opacity-50"
+                                            className="text-2xl font-bold text-foreground border-b-2 border-blue-600 focus:outline-none disabled:opacity-50"
                                             disabled={renaming}
                                             autoFocus
                                         />
                                         <button
                                             onClick={handleRenameGroup}
                                             disabled={renaming}
-                                            className="text-sm text-blue-600 hover:text-blue-700 font-medium disabled:text-gray-400"
+                                            className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium disabled:text-muted-foreground"
                                         >
                                             {renaming ? "Saving..." : "Save"}
                                         </button>
@@ -325,22 +329,22 @@ export default function GroupDashboard() {
                                                 setRenameError("");
                                             }}
                                             disabled={renaming}
-                                            className="text-sm text-gray-600 hover:text-gray-700 disabled:text-gray-400"
+                                            className="text-sm text-muted-foreground hover:text-foreground disabled:text-muted-foreground"
                                         >
                                             Cancel
                                         </button>
                                     </div>
                                     {renameError && (
-                                        <p className="text-sm text-red-600 mt-1">{renameError}</p>
+                                        <p className="text-sm text-red-600 dark:text-red-400 mt-1">{renameError}</p>
                                     )}
                                 </div>
                             ) : (
                                 <div className="flex items-center gap-3">
-                                    <h1 className="text-2xl font-bold text-gray-900">{group.name}</h1>
+                                    <h1 className="text-2xl font-bold text-foreground">{group.name}</h1>
                                     {isAdmin && (
                                         <button
                                             onClick={() => setIsRenaming(true)}
-                                            className="text-sm text-blue-600 hover:text-blue-700"
+                                            className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
                                         >
                                             Rename
                                         </button>
@@ -348,7 +352,7 @@ export default function GroupDashboard() {
                                 </div>
                             )}
                             {isAdmin && (
-                                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded mt-2 inline-block">
+                                <span className="text-xs bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 px-2 py-1 rounded mt-2 inline-block">
                                     You are Admin
                                 </span>
                             )}
@@ -358,7 +362,7 @@ export default function GroupDashboard() {
                             <button
                                 onClick={copyInviteLink}
                                 disabled={!invitesOpen}
-                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm whitespace-nowrap disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm whitespace-nowrap disabled:bg-muted disabled:cursor-not-allowed"
                             >
                                 {inviteCopied ? "✓ Copied!" : "📋 Copy Invite Link"}
                             </button>
@@ -367,27 +371,27 @@ export default function GroupDashboard() {
                                 <button
                                     onClick={handleToggleInvites}
                                     disabled={togglingInvites}
-                                    className="text-xs text-gray-600 hover:text-gray-900 disabled:text-gray-400"
+                                    className="text-xs text-muted-foreground hover:text-foreground disabled:text-muted-foreground"
                                 >
                                     {invitesOpen ? "Turn link off" : "Turn link on"}
                                 </button>
                             ) : (
                                 !invitesOpen && (
-                                    <span className="text-xs text-gray-500">Invite link is off</span>
+                                    <span className="text-xs text-muted-foreground">Invite link is off</span>
                                 )
                             )}
                         </div>
                     </div>
 
                     {inviteFallback && (
-                        <div className="mt-3 bg-amber-50 border border-amber-200 rounded-md p-3">
+                        <div className="mt-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-900 rounded-md p-3">
                             <div className="flex items-start justify-between gap-2 mb-2">
-                                <p className="text-xs text-amber-900">
+                                <p className="text-xs text-amber-900 dark:text-amber-200">
                                     Couldn&apos;t reach the clipboard. Copy the link by hand:
                                 </p>
                                 <button
                                     onClick={() => setInviteFallback(null)}
-                                    className="text-amber-900 text-lg leading-none opacity-60 hover:opacity-100"
+                                    className="text-amber-900 dark:text-amber-200 text-lg leading-none opacity-60 hover:opacity-100"
                                     aria-label="Dismiss"
                                 >
                                     ×
@@ -398,24 +402,24 @@ export default function GroupDashboard() {
                                 value={inviteFallback}
                                 readOnly
                                 onFocus={(e) => e.currentTarget.select()}
-                                className="w-full px-2 py-1 text-xs bg-white border border-amber-300 rounded text-gray-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                className="w-full px-2 py-1 text-xs bg-card border border-amber-300 dark:border-amber-800 rounded text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500"
                                 autoFocus
                             />
                         </div>
                     )}
 
                     {isAdmin && !invitesOpen && (
-                        <p className="mt-3 text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-md p-2">
+                        <p className="mt-3 text-xs text-muted-foreground bg-muted border border-border rounded-md p-2">
                             The invite link is off, so nobody new can join with it. Existing
                             members are unaffected.
                         </p>
                     )}
 
                     {isAdmin && (
-                        <div className="mt-4 pt-4 border-t border-gray-200">
+                        <div className="mt-4 pt-4 border-t border-border">
                             <button
                                 onClick={() => setShowDeleteModal(true)}
-                                className="text-sm text-red-600 hover:text-red-700 font-medium"
+                                className="text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 font-medium"
                             >
                                 Delete Group
                             </button>
@@ -427,14 +431,14 @@ export default function GroupDashboard() {
             {/* Main Content */}
             <main className="max-w-4xl mx-auto px-4 py-6">
                 {/* Balance Summary Section */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Balance Summary</h2>
+                <div className="bg-card rounded-lg shadow-sm border border-border p-6 mb-6">
+                    <h2 className="text-lg font-semibold text-foreground mb-4">Balance Summary</h2>
                     <BalanceSummary balances={balances} currentUserId={user?.uid || ""} />
                 </div>
 
                 {/* Settle Up Section */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Settle Up</h2>
+                <div className="bg-card rounded-lg shadow-sm border border-border p-6 mb-6">
+                    <h2 className="text-lg font-semibold text-foreground mb-4">Settle Up</h2>
                     <SettleUp
                         transfers={transfers}
                         settlements={settlements}
@@ -448,9 +452,9 @@ export default function GroupDashboard() {
                 </div>
 
                 {/* Expenses Section */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+                <div className="bg-card rounded-lg shadow-sm border border-border p-6 mb-6">
                     <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-semibold text-gray-900">
+                        <h2 className="text-lg font-semibold text-foreground">
                             Expenses ({expenses.length})
                         </h2>
                         <button
@@ -471,8 +475,8 @@ export default function GroupDashboard() {
                 </div>
 
                 {/* Members Section */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-                    <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                <div className="bg-card rounded-lg shadow-sm border border-border p-6 mb-6">
+                    <h2 className="text-lg font-semibold text-foreground mb-4">
                         Members ({members.length})
                     </h2>
                     <MembersList

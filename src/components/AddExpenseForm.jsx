@@ -209,7 +209,7 @@ export default function AddExpenseForm({
         <form onSubmit={handleSubmit} className="space-y-4">
             {/* Amount Input */}
             <div>
-                <label htmlFor="amount" className="block text-sm font-medium text-gray-900 mb-1">
+                <label htmlFor="amount" className="block text-sm font-medium text-foreground mb-1">
                     Amount (₹)
                 </label>
                 <input
@@ -220,7 +220,7 @@ export default function AddExpenseForm({
                     placeholder="0.00"
                     step="0.01"
                     min="0"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
+                    className="w-full px-4 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-foreground"
                     disabled={loading}
                     required
                 />
@@ -228,7 +228,7 @@ export default function AddExpenseForm({
 
             {/* Description Input */}
             <div>
-                <label htmlFor="description" className="block text-sm font-medium text-gray-900 mb-1">
+                <label htmlFor="description" className="block text-sm font-medium text-foreground mb-1">
                     Description
                 </label>
                 <input
@@ -241,7 +241,7 @@ export default function AddExpenseForm({
                     // characters; stop here so a long one is trimmed as it is
                     // typed rather than rejected as a permission error on save.
                     maxLength={200}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
+                    className="w-full px-4 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-foreground"
                     disabled={loading}
                     required
                 />
@@ -249,14 +249,14 @@ export default function AddExpenseForm({
 
             {/* Paid By Select */}
             <div>
-                <label htmlFor="paidBy" className="block text-sm font-medium text-gray-900 mb-1">
+                <label htmlFor="paidBy" className="block text-sm font-medium text-foreground mb-1">
                     Paid by
                 </label>
                 <select
                     id="paidBy"
                     value={paidBy}
                     onChange={(e) => setPaidBy(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
+                    className="w-full px-4 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-foreground"
                     disabled={loading}
                 >
                     {members.map((member) => (
@@ -269,10 +269,10 @@ export default function AddExpenseForm({
 
             {/* Split Type Tabs */}
             <div>
-                <label className="block text-sm font-medium text-gray-900 mb-2">
+                <label className="block text-sm font-medium text-foreground mb-2">
                     Split method
                 </label>
-                <div className="flex rounded-lg border border-gray-300 overflow-hidden">
+                <div className="flex rounded-lg border border-input overflow-hidden">
                     {["equal", "exact", "percentage"].map((type) => (
                         <button
                             key={type}
@@ -281,7 +281,7 @@ export default function AddExpenseForm({
                             className={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${
                                 splitType === type
                                     ? "bg-green-600 text-white"
-                                    : "bg-white text-gray-700 hover:bg-gray-50"
+                                    : "bg-card text-foreground hover:bg-muted"
                             }`}
                             disabled={loading}
                         >
@@ -295,28 +295,28 @@ export default function AddExpenseForm({
             <div className="space-y-2">
                 {splitType === "equal" && (
                     <>
-                        <p className="text-xs text-gray-500">Select who is part of this expense:</p>
+                        <p className="text-xs text-muted-foreground">Select who is part of this expense:</p>
                         <div className="space-y-1">
                             {members.map((member) => (
                                 <label
                                     key={member.uid}
-                                    className="flex items-center justify-between p-2 rounded-md hover:bg-gray-50 cursor-pointer"
+                                    className="flex items-center justify-between p-2 rounded-md hover:bg-muted cursor-pointer"
                                 >
                                     <div className="flex items-center gap-2">
                                         <input
                                             type="checkbox"
                                             checked={selectedMembers.has(member.uid)}
                                             onChange={() => toggleMember(member.uid)}
-                                            className="h-4 w-4 text-green-600 rounded border-gray-300 focus:ring-green-500"
+                                            className="h-4 w-4 text-green-600 dark:text-green-400 rounded border-input focus:ring-green-500"
                                             disabled={loading}
                                         />
-                                        <span className="text-sm text-gray-900">
+                                        <span className="text-sm text-foreground">
                                             {member.name}
                                             {member.uid === currentUserId ? " (You)" : ""}
                                         </span>
                                     </div>
                                     {selectedMembers.has(member.uid) && amountNum > 0 && (
-                                        <span className="text-sm text-gray-600">
+                                        <span className="text-sm text-muted-foreground">
                                             ₹{equalPreview[member.uid].toFixed(2)}
                                         </span>
                                     )}
@@ -324,8 +324,8 @@ export default function AddExpenseForm({
                             ))}
                         </div>
                         {amountNum > 0 && (
-                            <div className="bg-blue-50 border border-blue-200 rounded-md p-2 mt-1">
-                                <p className="text-sm text-blue-800">
+                            <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-900 rounded-md p-2 mt-1">
+                                <p className="text-sm text-blue-800 dark:text-blue-200">
                                     ₹{amountNum.toFixed(2)} between {selectedMembers.size} of {members.length} members
                                 </p>
                             </div>
@@ -335,16 +335,16 @@ export default function AddExpenseForm({
 
                 {splitType === "exact" && (
                     <>
-                        <p className="text-xs text-gray-500">Enter the exact amount each person owes:</p>
+                        <p className="text-xs text-muted-foreground">Enter the exact amount each person owes:</p>
                         <div className="space-y-2">
                             {members.map((member) => (
                                 <div key={member.uid} className="flex items-center gap-2">
-                                    <span className="text-sm text-gray-900 min-w-[100px] truncate">
+                                    <span className="text-sm text-foreground min-w-[100px] truncate">
                                         {member.name}
                                         {member.uid === currentUserId ? " (You)" : ""}
                                     </span>
                                     <div className="flex items-center flex-1">
-                                        <span className="text-gray-500 mr-1">₹</span>
+                                        <span className="text-muted-foreground mr-1">₹</span>
                                         <input
                                             type="number"
                                             value={exactAmounts[member.uid] || ""}
@@ -354,7 +354,7 @@ export default function AddExpenseForm({
                                             placeholder="0.00"
                                             step="0.01"
                                             min="0"
-                                            className="w-full px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 text-sm"
+                                            className="w-full px-2 py-1.5 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-foreground text-sm"
                                             disabled={loading}
                                         />
                                     </div>
@@ -364,13 +364,13 @@ export default function AddExpenseForm({
                         <div
                             className={`rounded-md p-2 mt-1 border ${
                                 exactTotalMatches
-                                    ? "bg-green-50 border-green-200"
-                                    : "bg-orange-50 border-orange-200"
+                                    ? "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-900"
+                                    : "bg-orange-50 dark:bg-orange-950 border-orange-200 dark:border-orange-900"
                             }`}
                         >
                             <p
                                 className={`text-sm ${
-                                    exactTotalMatches ? "text-green-800" : "text-orange-800"
+                                    exactTotalMatches ? "text-green-800 dark:text-green-200" : "text-orange-800 dark:text-orange-200"
                                 }`}
                             >
                                 Total: ₹{getExactTotal().toFixed(2)} / ₹{amountNum.toFixed(2)}
@@ -384,11 +384,11 @@ export default function AddExpenseForm({
 
                 {splitType === "percentage" && (
                     <>
-                        <p className="text-xs text-gray-500">Enter the percentage each person owes:</p>
+                        <p className="text-xs text-muted-foreground">Enter the percentage each person owes:</p>
                         <div className="space-y-2">
                             {members.map((member) => (
                                 <div key={member.uid} className="flex items-center gap-2">
-                                    <span className="text-sm text-gray-900 min-w-[100px] truncate">
+                                    <span className="text-sm text-foreground min-w-[100px] truncate">
                                         {member.name}
                                         {member.uid === currentUserId ? " (You)" : ""}
                                     </span>
@@ -403,13 +403,13 @@ export default function AddExpenseForm({
                                             step="0.01"
                                             min="0"
                                             max="100"
-                                            className="w-full px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 text-sm"
+                                            className="w-full px-2 py-1.5 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-foreground text-sm"
                                             disabled={loading}
                                         />
-                                        <span className="text-gray-500 ml-1">%</span>
+                                        <span className="text-muted-foreground ml-1">%</span>
                                     </div>
                                     {amountNum > 0 && parseFloat(percentages[member.uid] || "0") > 0 && (
-                                        <span className="text-xs text-gray-500 whitespace-nowrap">
+                                        <span className="text-xs text-muted-foreground whitespace-nowrap">
                                             = ₹{((amountNum * parseFloat(percentages[member.uid] || "0")) / 100).toFixed(2)}
                                         </span>
                                     )}
@@ -419,13 +419,13 @@ export default function AddExpenseForm({
                         <div
                             className={`rounded-md p-2 mt-1 border ${
                                 percentageTotalMatches
-                                    ? "bg-green-50 border-green-200"
-                                    : "bg-orange-50 border-orange-200"
+                                    ? "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-900"
+                                    : "bg-orange-50 dark:bg-orange-950 border-orange-200 dark:border-orange-900"
                             }`}
                         >
                             <p
                                 className={`text-sm ${
-                                    percentageTotalMatches ? "text-green-800" : "text-orange-800"
+                                    percentageTotalMatches ? "text-green-800 dark:text-green-200" : "text-orange-800 dark:text-orange-200"
                                 }`}
                             >
                                 Total: {getPercentageTotal()}% / 100%
@@ -440,7 +440,7 @@ export default function AddExpenseForm({
 
             {/* Error Message */}
             {error && (
-                <div className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-md p-2">
+                <div className="text-red-600 dark:text-red-400 text-sm bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-900 rounded-md p-2">
                     {error}
                 </div>
             )}

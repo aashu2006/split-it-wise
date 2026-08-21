@@ -16,7 +16,7 @@ export default function BalanceSummary({ balances, currentUserId }) {
 
     if (visible.length === 0) {
         return (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-muted-foreground">
                 Add expenses to see who owes whom
             </div>
         );
@@ -29,9 +29,9 @@ export default function BalanceSummary({ balances, currentUserId }) {
                 const isCurrentUser = memberBalance.uid === currentUserId;
 
                 const colorClasses = {
-                    green: "bg-green-50 border-green-200 text-green-800",
-                    red: "bg-red-50 border-red-200 text-red-800",
-                    gray: "bg-gray-50 border-gray-200 text-gray-600",
+                    green: "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-900 text-green-800 dark:text-green-200",
+                    red: "bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-900 text-red-800 dark:text-red-200",
+                    gray: "bg-muted border-border text-muted-foreground",
                 };
 
                 return (
@@ -47,7 +47,7 @@ export default function BalanceSummary({ balances, currentUserId }) {
                                         {isCurrentUser && " (You)"}
                                     </span>
                                     {memberBalance.isFormerMember && (
-                                        <span className="text-xs font-normal bg-gray-200 text-gray-700 px-2 py-0.5 rounded">
+                                        <span className="text-xs font-normal bg-muted text-foreground px-2 py-0.5 rounded">
                                             left group
                                         </span>
                                     )}

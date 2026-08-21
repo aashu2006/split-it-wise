@@ -1,5 +1,13 @@
 "use client";
 
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+
 /**
  * @param {Object} props
  * @param {boolean} props.isOpen
@@ -21,18 +29,25 @@ export default function ConfirmModal({
     onCancel,
     danger = false,
 }) {
-    if (!isOpen) return null;
-
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg max-w-md w-full p-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-3">{title}</h2>
-                <p className="text-gray-600 mb-6">{message}</p>
+        // Escape, a click on the backdrop and the close button all report the
+        // same thing — the user backed out — so they all run onCancel. Never
+        // onConfirm: dismissing a "delete this?" prompt must not delete.
+        <Dialog open={isOpen} onOpenChange={(open) => !open && onCancel()}>
+            <DialogContent className="sm:max-w-md p-6" showCloseButton={false}>
+                <DialogHeader>
+                    <DialogTitle className="text-xl font-bold text-foreground">
+                        {title}
+                    </DialogTitle>
+                    <DialogDescription className="text-muted-foreground">
+                        {message}
+                    </DialogDescription>
+                </DialogHeader>
 
-                <div className="flex gap-3 justify-end">
+                <div className="flex gap-3 justify-end mt-3">
                     <button
                         onClick={onCancel}
-                        className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md"
+                        className="px-4 py-2 text-foreground hover:bg-muted rounded-md"
                     >
                         {cancelText}
                     </button>
@@ -46,7 +61,7 @@ export default function ConfirmModal({
                         {confirmText}
                     </button>
                 </div>
-            </div>
-        </div>
+            </DialogContent>
+        </Dialog>
     );
 }

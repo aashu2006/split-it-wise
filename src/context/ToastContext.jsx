@@ -66,8 +66,8 @@ export const ToastProvider = ({ children }) => {
                         key={toast.id}
                         className={`pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-lg border px-4 py-3 shadow-lg ${
                             toast.kind === "error"
-                                ? "bg-red-50 border-red-200 text-red-800"
-                                : "bg-green-50 border-green-200 text-green-800"
+                                ? "bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-900 text-red-800 dark:text-red-200"
+                                : "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-900 text-green-800 dark:text-green-200"
                         }`}
                     >
                         <span className="flex-1 text-sm">{toast.message}</span>

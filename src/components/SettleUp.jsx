@@ -52,7 +52,7 @@ export default function SettleUp({
         <>
             <div className="space-y-4">
                 {transfers.length === 0 ? (
-                    <div className="text-center py-6 text-gray-500">
+                    <div className="text-center py-6 text-muted-foreground">
                         Everyone is settled up 🎉
                     </div>
                 ) : (
@@ -65,13 +65,13 @@ export default function SettleUp({
                             return (
                                 <div
                                     key={`${transfer.from}-${transfer.to}`}
-                                    className="flex items-center justify-between gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg"
+                                    className="flex items-center justify-between gap-3 p-3 bg-muted border border-border rounded-lg"
                                 >
-                                    <div className="text-sm text-gray-900">
+                                    <div className="text-sm text-foreground">
                                         <span className="font-medium">
                                             {isPayer ? "You" : nameFor(transfer.from)}
                                         </span>
-                                        <span className="text-gray-500">
+                                        <span className="text-muted-foreground">
                                             {isPayer ? " pay " : " pays "}
                                         </span>
                                         <span className="font-medium">
@@ -85,7 +85,7 @@ export default function SettleUp({
                                         className={`px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap ${
                                             isPayer
                                                 ? "bg-green-600 text-white hover:bg-green-700"
-                                                : "border border-gray-300 text-gray-700 hover:bg-gray-100"
+                                                : "border border-input text-foreground hover:bg-muted"
                                         }`}
                                     >
                                         {isPayer ? "Settle up" : "Mark paid"}
@@ -97,8 +97,8 @@ export default function SettleUp({
                 )}
 
                 {settlements.length > 0 && (
-                    <div className="pt-3 border-t border-gray-200">
-                        <h3 className="text-sm font-medium text-gray-900 mb-2">Payments made</h3>
+                    <div className="pt-3 border-t border-border">
+                        <h3 className="text-sm font-medium text-foreground mb-2">Payments made</h3>
                         <div className="space-y-1">
                             {settlements.map((settlement) => {
                                 const canDelete = settlement.createdBy === currentUserId || isAdmin;
@@ -106,11 +106,11 @@ export default function SettleUp({
                                 return (
                                     <div
                                         key={settlement.id}
-                                        className="flex items-center justify-between gap-3 text-sm text-gray-600 py-1"
+                                        className="flex items-center justify-between gap-3 text-sm text-muted-foreground py-1"
                                     >
                                         <span>
                                             {nameFor(settlement.from)} paid {nameFor(settlement.to)}{" "}
-                                            <span className="font-medium text-gray-900">
+                                            <span className="font-medium text-foreground">
                                                 ₹{settlement.amount.toFixed(2)}
                                             </span>
                                         </span>
@@ -118,7 +118,7 @@ export default function SettleUp({
                                             <button
                                                 onClick={() => setPendingUndo(settlement)}
                                                 disabled={deleting === settlement.id}
-                                                className="text-red-600 hover:text-red-700 text-xs font-medium disabled:opacity-50"
+                                                className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-xs font-medium disabled:opacity-50"
                                             >
                                                 {deleting === settlement.id ? "..." : "Undo"}
                                             </button>

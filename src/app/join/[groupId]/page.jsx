@@ -72,9 +72,9 @@ export default function JoinGroupPage() {
 
     if (authLoading || loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+            <div className="min-h-screen flex items-center justify-center bg-background">
                 <div className="text-center">
-                    <div className="text-gray-600 mb-2">Loading...</div>
+                    <div className="text-muted-foreground mb-2">Loading...</div>
                 </div>
             </div>
         );
@@ -82,9 +82,9 @@ export default function JoinGroupPage() {
 
     if (error) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+            <div className="min-h-screen flex items-center justify-center bg-background p-4">
                 <div className="text-center max-w-md">
-                    <div className="text-red-600 mb-4 text-lg font-medium">{error}</div>
+                    <div className="text-red-600 dark:text-red-400 mb-4 text-lg font-medium">{error}</div>
                     <button
                         onClick={() => router.push("/")}
                         className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -98,18 +98,18 @@ export default function JoinGroupPage() {
 
     if (!user) {
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+            <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950 dark:to-indigo-950 p-4">
                 <div className="text-center mb-8 max-w-md">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">Join Group</h1>
+                    <h1 className="text-3xl font-bold text-foreground mb-2">Join Group</h1>
                     {groupName && (
-                        <p className="text-gray-600 mb-4">
+                        <p className="text-muted-foreground mb-4">
                             You&apos;ve been invited to join <span className="font-semibold">{groupName}</span>
                         </p>
                     )}
-                    <p className="text-gray-600 mb-6">Sign in with Google to continue</p>
+                    <p className="text-muted-foreground mb-6">Sign in with Google to continue</p>
                     <button
                         onClick={signInWithGoogle}
-                        className="px-6 py-3 bg-white text-gray-900 rounded-lg shadow-md hover:shadow-lg transition-shadow font-medium flex items-center gap-2 mx-auto"
+                        className="px-6 py-3 bg-card text-foreground rounded-lg shadow-md hover:shadow-lg transition-shadow font-medium flex items-center gap-2 mx-auto"
                     >
                         <svg className="w-5 h-5" viewBox="0 0 24 24">
                             <path

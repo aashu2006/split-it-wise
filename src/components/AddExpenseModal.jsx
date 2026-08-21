@@ -1,6 +1,13 @@
 "use client";
 
 import AddExpenseForm from "./AddExpenseForm";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 
 /**
  * @param {Object} props
@@ -24,20 +31,20 @@ export default function AddExpenseModal({
         onClose();
     };
 
-    if (!isOpen) return null;
-
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-2xl font-bold text-gray-900">Add Expense</h2>
-                    <button
-                        onClick={onClose}
-                        className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
-                    >
-                        ×
-                    </button>
-                </div>
+        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="sm:max-w-md p-6 max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle className="text-2xl font-bold text-foreground">
+                        Add Expense
+                    </DialogTitle>
+                    {/* Not shown — the form's own labels carry the visual
+                        explanation. This is what a screen reader announces
+                        when the dialog opens, and Radix warns without it. */}
+                    <DialogDescription className="sr-only">
+                        Record what was spent, who paid, and how it should be split.
+                    </DialogDescription>
+                </DialogHeader>
 
                 <AddExpenseForm
                     groupId={groupId}
@@ -45,7 +52,7 @@ export default function AddExpenseModal({
                     currentUserId={currentUserId}
                     onExpenseAdded={handleExpenseAdded}
                 />
-            </div>
-        </div>
+            </DialogContent>
+        </Dialog>
     );
 }

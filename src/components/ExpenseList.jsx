@@ -60,7 +60,7 @@ export default function ExpenseList({
 
     if (expenses.length === 0) {
         return (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-muted-foreground">
                 No expenses yet. Add your first expense to get started!
             </div>
         );
@@ -91,23 +91,23 @@ export default function ExpenseList({
                     return (
                         <div
                             key={expense.id}
-                            className="bg-gray-50 rounded-lg p-4 border border-gray-200"
+                            className="bg-muted rounded-lg p-4 border border-border"
                         >
                             <div className="flex items-start justify-between">
                                 <div className="flex-1">
                                     <div className="flex items-center gap-2 mb-1">
-                                        <span className="text-lg font-semibold text-gray-900">
+                                        <span className="text-lg font-semibold text-foreground">
                                             ₹{expense.amount.toFixed(2)}
                                         </span>
                                         {expense.description && (
-                                            <span className="text-gray-600">• {expense.description}</span>
+                                            <span className="text-muted-foreground">• {expense.description}</span>
                                         )}
                                     </div>
-                                    <div className="text-sm text-gray-600">
+                                    <div className="text-sm text-muted-foreground">
                                         Paid by <span className="font-medium">{payer?.name || "Unknown"}</span>
                                         {expense.paidBy === currentUserId && " (You)"}
                                     </div>
-                                    <div className="text-xs text-gray-500 mt-1">
+                                    <div className="text-xs text-muted-foreground mt-1">
                                         {formatDate(expense.createdAt)} • {splitLabel} split • {splitSummary}
                                     </div>
                                 </div>
@@ -116,7 +116,7 @@ export default function ExpenseList({
                                     <button
                                         onClick={() => setPendingDelete(expense)}
                                         disabled={deleting === expense.id}
-                                        className="text-red-600 hover:text-red-700 text-sm font-medium ml-4 disabled:opacity-50"
+                                        className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-sm font-medium ml-4 disabled:opacity-50"
                                     >
                                         {deleting === expense.id ? "..." : "Delete"}
                                     </button>

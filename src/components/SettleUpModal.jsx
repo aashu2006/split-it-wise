@@ -4,6 +4,13 @@ import { useState } from "react";
 import { Timestamp } from "firebase/firestore";
 import { addSettlement } from "@/lib/settlements";
 import { buildUpiLink } from "@/lib/upi";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 
 /**
  * @param {Object} props
@@ -30,6 +37,9 @@ export default function SettleUpModal({
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
+    // The parent passes null to mean "closed", so this component is only ever
+    // mounted when there is a transfer to settle — which is why the Dialog
+    // below is unconditionally open.
     if (!transfer) return null;
 
     const payer = members.find((m) => m.uid === transfer.from);
@@ -85,27 +95,21 @@ export default function SettleUpModal({
     };
 
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-2xl font-bold text-gray-900">Settle up</h2>
-                    <button
-                        onClick={onClose}
-                        className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
-                        aria-label="Close"
-                    >
-                        ×
-                    </button>
-                </div>
-
-                <p className="text-gray-700 mb-4">
-                    <span className="font-medium">{isPayer ? "You" : payer?.name}</span>
-                    {isPayer ? " pay " : " pays "}
-                    <span className="font-medium">{payee?.name}</span>
-                </p>
+        <Dialog open onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="sm:max-w-md p-6 max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle className="text-2xl font-bold text-foreground">
+                        Settle up
+                    </DialogTitle>
+                    <DialogDescription className="text-foreground">
+                        <span className="font-medium">{isPayer ? "You" : payer?.name}</span>
+                        {isPayer ? " pay " : " pays "}
+                        <span className="font-medium">{payee?.name}</span>
+                    </DialogDescription>
+                </DialogHeader>
 
                 <div className="mb-4">
-                    <label htmlFor="settle-amount" className="block text-sm font-medium text-gray-900 mb-1">
+                    <label htmlFor="settle-amount" className="block text-sm font-medium text-foreground mb-1">
                         Amount (₹)
                     </label>
                     <input
@@ -117,10 +121,10 @@ export default function SettleUpModal({
                         step="0.01"
                         min="0"
                         max={transfer.amount}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
+                        className="w-full px-4 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-foreground"
                         disabled={loading}
                     />
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                         Leave blank to settle the full ₹{transfer.amount.toFixed(2)}
                     </p>
                 </div>
@@ -137,14 +141,14 @@ export default function SettleUpModal({
                 )}
 
                 {isPayer && !payee?.upiId && (
-                    <p className="text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-md p-2 mb-2">
+                    <p className="text-sm text-muted-foreground bg-muted border border-border rounded-md p-2 mb-2">
                         {payee?.name} hasn&apos;t added a UPI ID yet, so pay them however you
                         normally would and record it here.
                     </p>
                 )}
 
                 {error && (
-                    <div className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-md p-2 mb-2">
+                    <div className="text-red-600 dark:text-red-400 text-sm bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-900 rounded-md p-2 mb-2">
                         {error}
                     </div>
                 )}
@@ -157,10 +161,10 @@ export default function SettleUpModal({
                     {loading ? "Recording..." : "Mark as paid"}
                 </button>
 
-                <p className="text-xs text-gray-500 mt-2 text-center">
+                <p className="text-xs text-muted-foreground mt-2 text-center">
                     Only record it once the money has actually moved.
                 </p>
-            </div>
-        </div>
+            </DialogContent>
+        </Dialog>
     );
 }
