@@ -39,6 +39,16 @@ open source, this is a friendly place to start.
 - Anyone removed from a group while still owing money stays visible in the ledger,
   tagged *"left group"*, so their debt is never silently lost
 
+### Settling up
+- Balances are simplified into actual payments — **"Rahul pays Akshat ₹300"** — rather
+  than leaving everyone to work out the transfers themselves. A group of *n* people
+  never needs more than *n-1* payments
+- Record a repayment in full or in part, and undo one recorded by mistake
+- Add your UPI ID and others get a one-tap **upi://** link that opens GPay, PhonePe or
+  Paytm with the amount prefilled (phone-first: desktop has nothing to handle the link)
+- Repayments are stored separately from expenses, so paying a friend back never inflates
+  the group's spending totals
+
 ### Security
 - Firestore security rules enforce every permission server-side: group membership,
   admin-only actions, and expense ownership
@@ -201,12 +211,16 @@ npm test
 Covers the splitting and balance maths in `src/lib/calculations.test.js`, the part where
 a bug costs people real money. **If you touch `calculations.js`, add a test.**
 
-There's no compiler to catch mistakes here, so the tests and a build are the whole
-safety net. Worth running before you open a PR:
+There's no compiler to catch mistakes here, so the linter, the tests and a build are the
+whole safety net. Worth running before you open a PR:
 
 ```bash
+npm run lint        # ESLint: unused vars, hook deps, Next.js rules
 npm run build       # production build
 ```
+
+The linter currently reports a handful of warnings, all pre-existing and all tracked in
+the roadmap above. Keep it at zero *errors*.
 
 ---
 
@@ -217,17 +231,16 @@ duplicate work.
 
 **Most wanted**
 
-- [ ] **Settle up**: record that someone paid you back. Right now balances only ever
-      grow, and there's no way to clear a debt except adding a balancing expense by hand.
-      This is the biggest gap between this and real Splitwise.
-- [ ] **Who owes whom**: balances show each person's net position, so users still have to
-      work out the actual transfers. Simplify it into "Rahul pays Akshat ₹300".
-- [ ] **Edit an expense**, since currently you can only add and delete.
+- [ ] **Edit an expense**, since currently you can only add and delete. A typo'd amount
+      means deleting the expense and re-entering it.
+- [ ] **Real-time updates.** The app refetches after every change instead of using
+      Firestore `onSnapshot` listeners, so a second device won't see a new expense until
+      it reloads. This is also what the `react-hooks/set-state-in-effect` lint warnings
+      are pointing at — the fetch-then-setState effects go away once the data arrives as
+      a subscription.
 
 **Nice to have**
 
-- [ ] Real-time updates. The app refetches after every change instead of using Firestore
-      listeners.
 - [ ] Expense categories and filtering
 - [ ] Export a group's history to CSV
 - [ ] Multiple currencies (INR is hardcoded)
@@ -235,8 +248,9 @@ duplicate work.
 
 **Housekeeping**
 
-- [ ] Add ESLint, there's no linter configured
 - [ ] Component tests, only the maths is covered today
+- [ ] Swap the `<img>` avatar in `MembersList` for `next/image` (needs a
+      `remotePatterns` entry for `googleusercontent.com`)
 - [ ] Member emails are fetched to every group member's browser (needed by the current
       user lookup). Splitting public profile fields from private ones would fix it.
 - [ ] One-time cleanup of expenses orphaned by groups deleted before cascade delete existed
@@ -256,6 +270,7 @@ duplicate work.
 3. **Check it works:**
    ```bash
    npm test
+   npm run lint
    npm run build
    ```
 4. **Open a pull request** describing what changed and how you tested it. Screenshots help

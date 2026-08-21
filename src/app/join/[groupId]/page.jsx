@@ -103,7 +103,7 @@ export default function JoinGroupPage() {
                     <h1 className="text-3xl font-bold text-gray-900 mb-2">Join Group</h1>
                     {groupName && (
                         <p className="text-gray-600 mb-4">
-                            You've been invited to join <span className="font-semibold">{groupName}</span>
+                            You&apos;ve been invited to join <span className="font-semibold">{groupName}</span>
                         </p>
                     )}
                     <p className="text-gray-600 mb-6">Sign in with Google to continue</p>

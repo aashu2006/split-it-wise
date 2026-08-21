@@ -122,7 +122,7 @@ export default function Home() {
           </div>
         ) : groups.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-600 mb-4">You haven't joined any groups yet</p>
+            <p className="text-gray-600 mb-4">You haven&apos;t joined any groups yet</p>
             <button
               onClick={() => setShowCreateModal(true)}
               className="text-blue-600 hover:text-blue-700 font-medium"
