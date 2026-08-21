@@ -1,18 +1,16 @@
 "use client";
 
-import { useState } from "react";
-
-interface ConfirmModalProps {
-    isOpen: boolean;
-    title: string;
-    message: string;
-    confirmText?: string;
-    cancelText?: string;
-    onConfirm: () => void;
-    onCancel: () => void;
-    danger?: boolean;
-}
-
+/**
+ * @param {Object} props
+ * @param {boolean} props.isOpen
+ * @param {string} props.title
+ * @param {string} props.message
+ * @param {string} [props.confirmText]
+ * @param {string} [props.cancelText]
+ * @param {() => void} props.onConfirm
+ * @param {() => void} props.onCancel
+ * @param {boolean} [props.danger]
+ */
 export default function ConfirmModal({
     isOpen,
     title,
@@ -22,7 +20,7 @@ export default function ConfirmModal({
     onConfirm,
     onCancel,
     danger = false,
-}: ConfirmModalProps) {
+}) {
     if (!isOpen) return null;
 
     return (

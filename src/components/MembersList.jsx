@@ -1,38 +1,22 @@
 "use client";
 
-import { MemberBalance, User } from "@/types";
 import { removeMemberFromGroup } from "@/lib/groups";
 import { saveUpiId } from "@/lib/user";
 import { useToast } from "@/context/ToastContext";
 import ConfirmModal from "./ConfirmModal";
 import { useState } from "react";
 
-interface MembersListProps {
-    members: User[];
-    balances: MemberBalance[];
-    adminId: string;
-    currentUserId: string;
-    groupId: string;
-    /** Passed the uid so the caller can drop them locally without refetching. */
-    onMemberRemoved: (userId: string) => void;
-    /** Passed the saved value so the caller can patch its own profile copy. */
-    onProfileUpdated: (upiId: string) => void;
-}
-
 /**
  * Inline editor for your own UPI ID. Lives here rather than on a settings page
  * because this is where you see everyone else's, which is what prompts you to
  * add your own.
+ *
+ * @param {Object} props
+ * @param {string} props.currentUserId
+ * @param {string} [props.upiId]
+ * @param {(upiId: string) => void} props.onSaved
  */
-function UpiIdField({
-    currentUserId,
-    upiId,
-    onSaved,
-}: {
-    currentUserId: string;
-    upiId?: string;
-    onSaved: (upiId: string) => void;
-}) {
+function UpiIdField({ currentUserId, upiId, onSaved }) {
     const [editing, setEditing] = useState(false);
     const [value, setValue] = useState(upiId || "");
     const [saving, setSaving] = useState(false);
@@ -46,7 +30,7 @@ function UpiIdField({
             await saveUpiId(currentUserId, saved);
             setEditing(false);
             onSaved(saved);
-        } catch (err: any) {
+        } catch (err) {
             setError(err.message || "Failed to save");
         } finally {
             setSaving(false);
@@ -99,6 +83,18 @@ function UpiIdField({
     );
 }
 
+/**
+ * @param {Object} props
+ * @param {import("@/types").User[]} props.members
+ * @param {import("@/types").MemberBalance[]} props.balances
+ * @param {string} props.adminId
+ * @param {string} props.currentUserId
+ * @param {string} props.groupId
+ * @param {(userId: string) => void} props.onMemberRemoved
+ *   Passed the uid so the caller can drop them locally without refetching.
+ * @param {(upiId: string) => void} props.onProfileUpdated
+ *   Passed the saved value so the caller can patch its own profile copy.
+ */
 export default function MembersList({
     members,
     balances,
@@ -107,9 +103,9 @@ export default function MembersList({
     groupId,
     onMemberRemoved,
     onProfileUpdated,
-}: MembersListProps) {
-    const [removing, setRemoving] = useState<string | null>(null);
-    const [pendingRemoval, setPendingRemoval] = useState<User | null>(null);
+}) {
+    const [removing, setRemoving] = useState(null);
+    const [pendingRemoval, setPendingRemoval] = useState(null);
     const { showToast } = useToast();
     const isAdmin = currentUserId === adminId;
 
@@ -117,7 +113,7 @@ export default function MembersList({
 
     // A member mid-debt can't be removed: expenses can only reference current
     // members, so once they're out there is no way to settle with them.
-    const settleFirst = (uid: string): string | null => {
+    const settleFirst = (uid) => {
         const balance = balanceByUid.get(uid) ?? 0;
         if (balance === 0) return null;
         return balance > 0
@@ -125,14 +121,14 @@ export default function MembersList({
             : `Owes ₹${Math.abs(balance).toFixed(2)} — settle up before removing`;
     };
 
-    const handleRemoveMember = async (member: User) => {
+    const handleRemoveMember = async (member) => {
         setPendingRemoval(null);
         setRemoving(member.uid);
 
         try {
             await removeMemberFromGroup(groupId, member.uid, currentUserId);
             onMemberRemoved(member.uid);
-        } catch (error: any) {
+        } catch (error) {
             showToast(error.message || "Failed to remove member");
         } finally {
             setRemoving(null);

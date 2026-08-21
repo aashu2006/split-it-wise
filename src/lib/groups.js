@@ -15,15 +15,14 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { calculateBalancesByUid } from "./calculations";
-import { Expense, Group, Settlement } from "@/types";
 
 /**
  * Create a new group
- * @param name - Group name
- * @param adminId - User ID of the creator (becomes admin)
- * @returns Group ID
+ * @param {string} name - Group name
+ * @param {string} adminId - User ID of the creator (becomes admin)
+ * @returns {Promise<string>} Group ID
  */
-export const createGroup = async (name: string, adminId: string): Promise<string> => {
+export const createGroup = async (name, adminId) => {
     const groupRef = doc(collection(db, "groups"));
     const groupId = groupRef.id;
 
@@ -41,10 +40,10 @@ export const createGroup = async (name: string, adminId: string): Promise<string
 
 /**
  * Get all groups where user is a member
- * @param userId - User ID
- * @returns Array of groups
+ * @param {string} userId - User ID
+ * @returns {Promise<import("@/types").Group[]>} Array of groups
  */
-export const getUserGroups = async (userId: string): Promise<Group[]> => {
+export const getUserGroups = async (userId) => {
     const groupsRef = collection(db, "groups");
     const q = query(groupsRef, where("members", "array-contains", userId));
     const snapshot = await getDocs(q);
@@ -52,15 +51,15 @@ export const getUserGroups = async (userId: string): Promise<Group[]> => {
     return snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
-    })) as Group[];
+    }));
 };
 
 /**
  * Get a single group by ID
- * @param groupId - Group ID
- * @returns Group or null if not found
+ * @param {string} groupId - Group ID
+ * @returns {Promise<import("@/types").Group | null>} Group or null if not found
  */
-export const getGroup = async (groupId: string): Promise<Group | null> => {
+export const getGroup = async (groupId) => {
     const groupRef = doc(db, "groups", groupId);
     const snapshot = await getDoc(groupRef);
 
@@ -71,15 +70,16 @@ export const getGroup = async (groupId: string): Promise<Group | null> => {
     return {
         id: snapshot.id,
         ...snapshot.data(),
-    } as Group;
+    };
 };
 
 /**
  * Add a user to a group
- * @param groupId - Group ID
- * @param userId - User ID to add
+ * @param {string} groupId - Group ID
+ * @param {string} userId - User ID to add
+ * @returns {Promise<void>}
  */
-export const addMemberToGroup = async (groupId: string, userId: string): Promise<void> => {
+export const addMemberToGroup = async (groupId, userId) => {
     const groupRef = doc(db, "groups", groupId);
     await updateDoc(groupRef, {
         members: arrayUnion(userId),
@@ -99,15 +99,12 @@ export const addMemberToGroup = async (groupId: string, userId: string): Promise
  * calculateBalancesByUid keeps a removed member in the ledger either way, so a
  * bypass no longer loses the money.
  *
- * @param groupId - Group ID
- * @param userId - User ID to remove
- * @param requesterId - User ID making the request (must be admin)
+ * @param {string} groupId - Group ID
+ * @param {string} userId - User ID to remove
+ * @param {string} requesterId - User ID making the request (must be admin)
+ * @returns {Promise<void>}
  */
-export const removeMemberFromGroup = async (
-    groupId: string,
-    userId: string,
-    requesterId: string
-): Promise<void> => {
+export const removeMemberFromGroup = async (groupId, userId, requesterId) => {
     const group = await getGroup(groupId);
     if (!group) throw new Error("Group not found");
     if (group.adminId !== requesterId) throw new Error("Only admin can remove members");
@@ -121,9 +118,9 @@ export const removeMemberFromGroup = async (
         getDocs(query(collection(db, "settlements"), where("groupId", "==", groupId))),
     ]);
     const balances = calculateBalancesByUid(
-        expenses.docs.map((expense) => expense.data() as Expense),
+        expenses.docs.map((expense) => expense.data()),
         group.members,
-        settlements.docs.map((settlement) => settlement.data() as Settlement)
+        settlements.docs.map((settlement) => settlement.data())
     );
 
     const balance = balances[userId] ?? 0;
@@ -150,15 +147,12 @@ export const removeMemberFromGroup = async (
  * walking back in. Closing the group is the only revocation available without
  * a backend to mint and expire real tokens.
  *
- * @param groupId - Group ID
- * @param joinOpen - true to accept new members via the link, false to refuse
- * @param requesterId - User ID making the request (must be admin)
+ * @param {string} groupId - Group ID
+ * @param {boolean} joinOpen - true to accept new members via the link, false to refuse
+ * @param {string} requesterId - User ID making the request (must be admin)
+ * @returns {Promise<void>}
  */
-export const setGroupJoinOpen = async (
-    groupId: string,
-    joinOpen: boolean,
-    requesterId: string
-): Promise<void> => {
+export const setGroupJoinOpen = async (groupId, joinOpen, requesterId) => {
     const group = await getGroup(groupId);
     if (!group) throw new Error("Group not found");
     if (group.adminId !== requesterId) throw new Error("Only admin can change the invite link");
@@ -172,15 +166,12 @@ export const setGroupJoinOpen = async (
 
 /**
  * Update group name (admin only)
- * @param groupId - Group ID
- * @param newName - New group name
- * @param requesterId - User ID making the request (must be admin)
+ * @param {string} groupId - Group ID
+ * @param {string} newName - New group name
+ * @param {string} requesterId - User ID making the request (must be admin)
+ * @returns {Promise<void>}
  */
-export const updateGroupName = async (
-    groupId: string,
-    newName: string,
-    requesterId: string
-): Promise<void> => {
+export const updateGroupName = async (groupId, newName, requesterId) => {
     const group = await getGroup(groupId);
     if (!group) throw new Error("Group not found");
     if (group.adminId !== requesterId) throw new Error("Only admin can rename group");
@@ -206,10 +197,11 @@ const CASCADE_DELETE_BATCH_SIZE = 20;
  * while the rules check whether the requester is its admin. If this fails
  * partway through, the group survives and the delete can simply be retried.
  *
- * @param groupId - Group ID
- * @param requesterId - User ID making the request (must be admin)
+ * @param {string} groupId - Group ID
+ * @param {string} requesterId - User ID making the request (must be admin)
+ * @returns {Promise<void>}
  */
-export const deleteGroup = async (groupId: string, requesterId: string): Promise<void> => {
+export const deleteGroup = async (groupId, requesterId) => {
     const group = await getGroup(groupId);
     if (!group) throw new Error("Group not found");
     if (group.adminId !== requesterId) throw new Error("Only admin can delete group");
@@ -234,11 +226,11 @@ export const deleteGroup = async (groupId: string, requesterId: string): Promise
 
 /**
  * Check if user is a member of a group
- * @param groupId - Group ID
- * @param userId - User ID
- * @returns true if user is a member
+ * @param {string} groupId - Group ID
+ * @param {string} userId - User ID
+ * @returns {Promise<boolean>} true if user is a member
  */
-export const isUserMember = async (groupId: string, userId: string): Promise<boolean> => {
+export const isUserMember = async (groupId, userId) => {
     const group = await getGroup(groupId);
     if (!group) return false;
     return group.members.includes(userId);

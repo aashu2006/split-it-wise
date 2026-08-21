@@ -1,21 +1,20 @@
 "use client";
 
-import { Expense, User } from "@/types";
 import { deleteExpense } from "@/lib/expenses";
 import { useToast } from "@/context/ToastContext";
 import ConfirmModal from "./ConfirmModal";
 import { useState } from "react";
 
-interface ExpenseListProps {
-    expenses: Expense[];
-    members: User[];
-    currentUserId: string;
-    groupId: string;
-    isAdmin: boolean;
-    /** Passed the id so the caller can drop it from its list without refetching. */
-    onExpenseDeleted: (expenseId: string) => void;
-}
-
+/**
+ * @param {Object} props
+ * @param {import("@/types").Expense[]} props.expenses
+ * @param {import("@/types").User[]} props.members
+ * @param {string} props.currentUserId
+ * @param {string} props.groupId
+ * @param {boolean} props.isAdmin
+ * @param {(expenseId: string) => void} props.onExpenseDeleted
+ *   Passed the id so the caller can drop it from its list without refetching.
+ */
 export default function ExpenseList({
     expenses,
     members,
@@ -23,15 +22,15 @@ export default function ExpenseList({
     groupId,
     isAdmin,
     onExpenseDeleted,
-}: ExpenseListProps) {
-    const [deleting, setDeleting] = useState<string | null>(null);
-    const [pendingDelete, setPendingDelete] = useState<Expense | null>(null);
+}) {
+    const [deleting, setDeleting] = useState(null);
+    const [pendingDelete, setPendingDelete] = useState(null);
     const { showToast } = useToast();
 
     // Create a map of uid to user for quick lookup
     const userMap = new Map(members.map((m) => [m.uid, m]));
 
-    const formatDate = (timestamp: any) => {
+    const formatDate = (timestamp) => {
         if (!timestamp) return "";
         const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
         return date.toLocaleDateString("en-IN", {
@@ -41,21 +40,21 @@ export default function ExpenseList({
         });
     };
 
-    const handleDelete = async (expense: Expense) => {
+    const handleDelete = async (expense) => {
         setPendingDelete(null);
         setDeleting(expense.id);
 
         try {
             await deleteExpense(expense.id, groupId, currentUserId);
             onExpenseDeleted(expense.id);
-        } catch (error: any) {
+        } catch (error) {
             showToast(error.message || "Failed to delete expense");
         } finally {
             setDeleting(null);
         }
     };
 
-    const canDelete = (expense: Expense) => {
+    const canDelete = (expense) => {
         return expense.createdBy === currentUserId || isAdmin;
     };
 

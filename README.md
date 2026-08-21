@@ -50,7 +50,7 @@ open source, this is a friendly place to start.
 | | |
 |---|---|
 | Framework | Next.js 16 (App Router) |
-| Language | TypeScript |
+| Language | JavaScript (ES modules) |
 | UI | React 19, Tailwind CSS v4 |
 | Auth | Firebase Authentication (Google) |
 | Database | Cloud Firestore |
@@ -168,18 +168,18 @@ second Google account.
 ```
 src/
 ├── app/                    Pages (App Router)
-│   ├── page.tsx            Home, your groups
+│   ├── page.jsx            Home, your groups
 │   ├── group/[groupId]/    Group dashboard
 │   └── join/[groupId]/     Invite link handler
 ├── components/             UI components
 ├── context/                AuthContext: Google sign-in, current user
 ├── lib/                    All Firestore access + business logic
-│   ├── firebase.ts         SDK setup
-│   ├── groups.ts           Create, join, rename, remove members, delete
-│   ├── expenses.ts         Add, fetch, delete expenses
-│   ├── user.ts             Profile lookups
-│   └── calculations.ts     Splitting + balance maths
-└── types/                  Shared TypeScript types
+│   ├── firebase.js         SDK setup
+│   ├── groups.js           Create, join, rename, remove members, delete
+│   ├── expenses.js         Add, fetch, delete expenses
+│   ├── user.js             Profile lookups
+│   └── calculations.js     Splitting + balance maths
+└── types/                  Shared data shapes, as JSDoc typedefs
 
 firestore.rules             Server-side permissions, the real security
 firestore.indexes.json      Composite indexes
@@ -198,13 +198,13 @@ Rules of thumb:
 npm test
 ```
 
-Covers the splitting and balance maths in `src/lib/calculations.test.ts`, the part where
-a bug costs people real money. **If you touch `calculations.ts`, add a test.**
+Covers the splitting and balance maths in `src/lib/calculations.test.js`, the part where
+a bug costs people real money. **If you touch `calculations.js`, add a test.**
 
-Also worth running before you open a PR:
+There's no compiler to catch mistakes here, so the tests and a build are the whole
+safety net. Worth running before you open a PR:
 
 ```bash
-npx tsc --noEmit    # type errors
 npm run build       # production build
 ```
 
@@ -249,12 +249,13 @@ duplicate work.
    ```bash
    git checkout -b feat/settle-up
    ```
-2. **Make your change.** Match the surrounding style. The codebase is plain TypeScript
-   with no state library, and comments explain *why* rather than *what*.
+2. **Make your change.** Match the surrounding style. The codebase is plain JavaScript
+   with no state library, and comments explain *why* rather than *what*. Data shapes
+   live as JSDoc typedefs in `src/types/index.js` — reference them from JSDoc rather
+   than leaving a function's arguments undocumented.
 3. **Check it works:**
    ```bash
    npm test
-   npx tsc --noEmit
    npm run build
    ```
 4. **Open a pull request** describing what changed and how you tested it. Screenshots help
@@ -264,7 +265,7 @@ duplicate work.
 
 - If your change touches permissions, update `firestore.rules` too. The checks in
   `src/lib/` run in the browser and can be bypassed, so they're UX, not security.
-- Money is handled in integer paise (see `toPaise`/`toRupees` in `calculations.ts`).
+- Money is handled in integer paise (see `toPaise`/`toRupees` in `calculations.js`).
   Never sum floats, because `0.1 + 0.2 !== 0.3` and small errors compound into wrong
   balances.
 - Don't commit `.env.local` or any service account key

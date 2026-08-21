@@ -7,20 +7,28 @@ import {
     splitEqually,
 } from "./calculations";
 import { buildUpiLink, isValidUpiId } from "./upi";
-import { Expense, Settlement, User } from "@/types";
 
-const sum = (values: number[]) => Math.round(values.reduce((a, b) => a + b, 0) * 100);
-const paise = (rupees: number) => Math.round(rupees * 100);
+const sum = (values) => Math.round(values.reduce((a, b) => a + b, 0) * 100);
+const paise = (rupees) => Math.round(rupees * 100);
 
-const user = (uid: string): User => ({ uid, name: uid.toUpperCase() } as User);
+const user = (uid) => ({ uid, name: uid.toUpperCase() });
 const MEMBERS = [user("a"), user("b"), user("c")];
 const MEMBER_UIDS = ["a", "b", "c"];
 
-const expense = (partial: Partial<Expense>): Expense =>
-    ({ groupId: "g", description: "d", splitType: "equal", ...partial } as Expense);
+const expense = (partial) => ({
+    groupId: "g",
+    description: "d",
+    splitType: "equal",
+    ...partial,
+});
 
-const settlement = (from: string, to: string, amount: number): Settlement =>
-    ({ id: `${from}-${to}-${amount}`, groupId: "g", from, to, amount } as Settlement);
+const settlement = (from, to, amount) => ({
+    id: `${from}-${to}-${amount}`,
+    groupId: "g",
+    from,
+    to,
+    amount,
+});
 
 describe("splitEqually", () => {
     it("sums to the original amount for every amount and group size", () => {
@@ -130,7 +138,7 @@ describe("calculateBalancesByUid", () => {
             expense({
                 paidBy: "a",
                 amount: 90,
-                splits: { a: 30, b: "oops" as unknown as number, c: 30 },
+                splits: { a: 30, b: "oops", c: 30 },
             }),
         ];
         const balances = calculateBalancesByUid(expenses, MEMBER_UIDS);
@@ -197,7 +205,7 @@ describe("simplifyDebts", () => {
     });
 
     it("produces transfers that exactly clear every balance", () => {
-        const balances: { [uid: string]: number } = {
+        const balances = {
             a: 123.45,
             b: -60.2,
             c: -63.25,
@@ -214,7 +222,7 @@ describe("simplifyDebts", () => {
     });
 
     it("only ever moves money from debtors to creditors", () => {
-        const balances: { [uid: string]: number } = { a: 40, b: 20, c: -25, d: -35 };
+        const balances = { a: 40, b: 20, c: -25, d: -35 };
         for (const transfer of simplifyDebts(balances)) {
             expect(balances[transfer.from]).toBeLessThan(0);
             expect(balances[transfer.to]).toBeGreaterThan(0);

@@ -4,22 +4,19 @@ import { useState } from "react";
 import { Timestamp } from "firebase/firestore";
 import { addSettlement } from "@/lib/settlements";
 import { buildUpiLink } from "@/lib/upi";
-import { Settlement, Transfer, User } from "@/types";
 
-interface SettleUpModalProps {
-    transfer: Transfer | null;
-    members: User[];
-    currentUserId: string;
-    groupId: string;
-    groupName: string;
-    onClose: () => void;
-    /**
-     * Passed the settlement as it was stored, so the caller can add it to its
-     * list without refetching the group.
-     */
-    onSettled: (settlement: Settlement) => void;
-}
-
+/**
+ * @param {Object} props
+ * @param {import("@/types").Transfer | null} props.transfer
+ * @param {import("@/types").User[]} props.members
+ * @param {string} props.currentUserId
+ * @param {string} props.groupId
+ * @param {string} props.groupName
+ * @param {() => void} props.onClose
+ * @param {(settlement: import("@/types").Settlement) => void} props.onSettled
+ *   Passed the settlement as it was stored, so the caller can add it to its
+ *   list without refetching the group.
+ */
 export default function SettleUpModal({
     transfer,
     members,
@@ -28,7 +25,7 @@ export default function SettleUpModal({
     groupName,
     onClose,
     onSettled,
-}: SettleUpModalProps) {
+}) {
     const [amount, setAmount] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -80,7 +77,7 @@ export default function SettleUpModal({
                 createdAt: Timestamp.now(),
             });
             onClose();
-        } catch (err: any) {
+        } catch (err) {
             setError(err.message || "Failed to record the payment");
         } finally {
             setLoading(false);

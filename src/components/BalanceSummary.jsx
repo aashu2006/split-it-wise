@@ -1,17 +1,13 @@
 "use client";
 
-import { MemberBalance } from "@/types";
 import { formatBalance } from "@/lib/calculations";
 
-interface BalanceSummaryProps {
-    balances: MemberBalance[];
-    currentUserId: string;
-}
-
-export default function BalanceSummary({
-    balances,
-    currentUserId,
-}: BalanceSummaryProps) {
+/**
+ * @param {Object} props
+ * @param {import("@/types").MemberBalance[]} props.balances
+ * @param {string} props.currentUserId
+ */
+export default function BalanceSummary({ balances, currentUserId }) {
     // Former members only matter while they still owe or are owed something.
     // Once settled they are just clutter in a list of current members.
     const visible = balances.filter(

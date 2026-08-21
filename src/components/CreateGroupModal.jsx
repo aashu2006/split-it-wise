@@ -4,23 +4,19 @@ import { useState } from "react";
 import { createGroup } from "@/lib/groups";
 import { useAuth } from "@/context/AuthContext";
 
-interface CreateGroupModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    onGroupCreated: () => void;
-}
-
-export default function CreateGroupModal({
-    isOpen,
-    onClose,
-    onGroupCreated,
-}: CreateGroupModalProps) {
+/**
+ * @param {Object} props
+ * @param {boolean} props.isOpen
+ * @param {() => void} props.onClose
+ * @param {() => void} props.onGroupCreated
+ */
+export default function CreateGroupModal({ isOpen, onClose, onGroupCreated }) {
     const { user } = useAuth();
     const [groupName, setGroupName] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         if (!user) return;
 

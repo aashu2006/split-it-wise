@@ -1,5 +1,3 @@
-import { Expense, MemberBalance, Settlement, Transfer, User } from "@/types";
-
 /**
  * Money is held as integer paise for every intermediate calculation. Rounding
  * each person's share independently loses money — ₹100 split three ways gives
@@ -11,33 +9,38 @@ import { Expense, MemberBalance, Settlement, Transfer, User } from "@/types";
  * can't type-check the values of a splits map, so a member can write a share
  * the UI would never produce; letting that become NaN here would spread
  * through every balance in the group.
+ *
+ * @param {number} rupees
+ * @returns {number}
  */
-const toPaise = (rupees: number): number => {
+const toPaise = (rupees) => {
     const paise = Math.round(Number(rupees) * 100);
     return Number.isFinite(paise) ? paise : 0;
 };
-const toRupees = (paise: number): number => paise / 100;
+
+/**
+ * @param {number} paise
+ * @returns {number}
+ */
+const toRupees = (paise) => paise / 100;
 
 /**
  * Split an amount equally between the given members.
  * Leftover paise are handed out one at a time, so shares differ by at most
  * ₹0.01 and always add back up to `amount`.
  *
- * @param amount - Total amount in INR
- * @param uids - Members sharing the expense
- * @returns Map of uid to amount owed
+ * @param {number} amount - Total amount in INR
+ * @param {string[]} uids - Members sharing the expense
+ * @returns {Object<string, number>} Map of uid to amount owed
  */
-export const splitEqually = (
-    amount: number,
-    uids: string[]
-): { [uid: string]: number } => {
+export const splitEqually = (amount, uids) => {
     if (uids.length === 0) return {};
 
     const totalPaise = toPaise(amount);
     const base = Math.floor(totalPaise / uids.length);
     let leftover = totalPaise - base * uids.length;
 
-    const splits: { [uid: string]: number } = {};
+    const splits = {};
     for (const uid of uids) {
         splits[uid] = toRupees(leftover > 0 ? base + 1 : base);
         if (leftover > 0) leftover--;
@@ -51,14 +54,11 @@ export const splitEqually = (
  * rounded down first, then the leftover paise go to whoever lost the most to
  * rounding. Percentages are expected to add up to 100.
  *
- * @param amount - Total amount in INR
- * @param percentages - Map of uid to percentage (entries of 0 are ignored)
- * @returns Map of uid to amount owed
+ * @param {number} amount - Total amount in INR
+ * @param {Object<string, number>} percentages - Map of uid to percentage (entries of 0 are ignored)
+ * @returns {Object<string, number>} Map of uid to amount owed
  */
-export const splitByPercentage = (
-    amount: number,
-    percentages: { [uid: string]: number }
-): { [uid: string]: number } => {
+export const splitByPercentage = (amount, percentages) => {
     const uids = Object.keys(percentages).filter((uid) => percentages[uid] > 0);
     if (uids.length === 0) return {};
 
@@ -89,22 +89,18 @@ export const splitByPercentage = (
  * keeps their balance here — dropping them would delete their share of the
  * ledger and leave the remaining balances no longer summing to zero.
  *
- * @param expenses - All expenses in the group
- * @param memberUids - UIDs of the group's current members
- * @param settlements - Repayments already made between members
- * @returns Map of uid to balance in INR
+ * @param {import("@/types").Expense[]} expenses - All expenses in the group
+ * @param {string[]} memberUids - UIDs of the group's current members
+ * @param {import("@/types").Settlement[]} [settlements] - Repayments already made between members
+ * @returns {Object<string, number>} Map of uid to balance in INR
  */
-export const calculateBalancesByUid = (
-    expenses: Expense[],
-    memberUids: string[],
-    settlements: Settlement[] = []
-): { [uid: string]: number } => {
-    const balances: { [uid: string]: number } = {};
+export const calculateBalancesByUid = (expenses, memberUids, settlements = []) => {
+    const balances = {};
     for (const uid of participantUids(expenses, memberUids, settlements)) {
         balances[uid] = 0;
     }
 
-    const applyShares = (splits: { [uid: string]: number }) => {
+    const applyShares = (splits) => {
         for (const [uid, share] of Object.entries(splits)) {
             if (balances[uid] !== undefined) {
                 balances[uid] -= toPaise(share);
@@ -148,12 +144,13 @@ export const calculateBalancesByUid = (
 /**
  * Everyone who takes part in the group's ledger: its current members plus
  * anyone who paid for, was included in an expense, or settled up.
+ *
+ * @param {import("@/types").Expense[]} expenses
+ * @param {string[]} memberUids
+ * @param {import("@/types").Settlement[]} [settlements]
+ * @returns {string[]}
  */
-const participantUids = (
-    expenses: Expense[],
-    memberUids: string[],
-    settlements: Settlement[] = []
-): string[] => {
+const participantUids = (expenses, memberUids, settlements = []) => {
     const uids = new Set(memberUids);
     for (const expense of expenses) {
         uids.add(expense.paidBy);
@@ -176,12 +173,12 @@ const participantUids = (
  * largest creditor clears at least one person per transfer, so a group of n
  * people never needs more than n-1 payments.
  *
- * @param balances - Map of uid to balance in INR, as returned by calculateBalancesByUid
- * @returns Transfers to make, largest first
+ * @param {Object<string, number>} balances - Map of uid to balance in INR, as returned by calculateBalancesByUid
+ * @returns {import("@/types").Transfer[]} Transfers to make, largest first
  */
-export const simplifyDebts = (balances: { [uid: string]: number }): Transfer[] => {
-    const debtors: { uid: string; paise: number }[] = [];
-    const creditors: { uid: string; paise: number }[] = [];
+export const simplifyDebts = (balances) => {
+    const debtors = [];
+    const creditors = [];
 
     for (const [uid, balance] of Object.entries(balances)) {
         const paise = toPaise(balance);
@@ -193,7 +190,7 @@ export const simplifyDebts = (balances: { [uid: string]: number }): Transfer[] =
     debtors.sort((a, b) => b.paise - a.paise || a.uid.localeCompare(b.uid));
     creditors.sort((a, b) => b.paise - a.paise || a.uid.localeCompare(b.uid));
 
-    const transfers: Transfer[] = [];
+    const transfers = [];
     let i = 0;
     let j = 0;
 
@@ -219,18 +216,18 @@ export const simplifyDebts = (balances: { [uid: string]: number }): Transfer[] =
  * Members come first, then anyone who has left the group but is still part of
  * its history (flagged with isFormerMember).
  *
- * @param expenses - All expenses in the group
- * @param members - Current members, plus profiles for any former participants
- * @param memberUids - UIDs of the current members; defaults to every uid in `members`
- * @param settlements - Repayments already made between members
- * @returns Array of member balances
+ * @param {import("@/types").Expense[]} expenses - All expenses in the group
+ * @param {import("@/types").User[]} members - Current members, plus profiles for any former participants
+ * @param {string[]} [memberUids] - UIDs of the current members; defaults to every uid in `members`
+ * @param {import("@/types").Settlement[]} [settlements] - Repayments already made between members
+ * @returns {import("@/types").MemberBalance[]} Array of member balances
  */
 export const calculateMemberBalances = (
-    expenses: Expense[],
-    members: User[],
-    memberUids: string[] = members.map((m) => m.uid),
-    settlements: Settlement[] = []
-): MemberBalance[] => {
+    expenses,
+    members,
+    memberUids = members.map((m) => m.uid),
+    settlements = []
+) => {
     const balances = calculateBalancesByUid(expenses, memberUids, settlements);
     const currentMembers = new Set(memberUids);
     const namesByUid = new Map(members.map((m) => [m.uid, m.name]));
@@ -247,13 +244,10 @@ export const calculateMemberBalances = (
 
 /**
  * Format balance for display
- * @param balance - Balance amount
- * @returns Formatted string with color indicator
+ * @param {number} balance - Balance amount
+ * @returns {{ text: string, color: "green" | "red" | "gray" }} Formatted string with color indicator
  */
-export const formatBalance = (balance: number): {
-    text: string;
-    color: "green" | "red" | "gray";
-} => {
+export const formatBalance = (balance) => {
     if (balance > 0) {
         return {
             text: `₹${balance.toFixed(2)} lena hai`,

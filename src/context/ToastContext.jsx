@@ -2,20 +2,23 @@
 
 import { createContext, useCallback, useContext, useState } from "react";
 
-type ToastKind = "error" | "success";
+/** @typedef {"error" | "success"} ToastKind */
 
-type Toast = {
-    id: number;
-    message: string;
-    kind: ToastKind;
-};
+/**
+ * @typedef {Object} Toast
+ * @property {number} id
+ * @property {string} message
+ * @property {ToastKind} kind
+ */
 
-type ToastContextType = {
-    /** Show a transient message. Use for outcomes with no obvious place on screen. */
-    showToast: (message: string, kind?: ToastKind) => void;
-};
+/**
+ * @typedef {Object} ToastContextValue
+ * @property {(message: string, kind?: ToastKind) => void} showToast
+ *   Show a transient message. Use for outcomes with no obvious place on screen.
+ */
 
-const ToastContext = createContext<ToastContextType | null>(null);
+/** @type {import("react").Context<ToastContextValue | null>} */
+const ToastContext = createContext(null);
 
 const DISMISS_AFTER_MS = 5000;
 
@@ -30,10 +33,10 @@ let nextToastId = 1;
  * member who couldn't be removed. Anything tied to a form field belongs inline
  * next to that field instead, where the user is already looking.
  */
-export const ToastProvider = ({ children }: { children: React.ReactNode }) => {
-    const [toasts, setToasts] = useState<Toast[]>([]);
+export const ToastProvider = ({ children }) => {
+    const [toasts, setToasts] = useState([]);
 
-    const showToast = useCallback((message: string, kind: ToastKind = "error") => {
+    const showToast = useCallback((message, kind = "error") => {
         // Date.now() would collide when two toasts land in the same millisecond,
         // and a repeated key makes React reuse the wrong node on dismissal.
         const id = nextToastId++;
@@ -44,7 +47,7 @@ export const ToastProvider = ({ children }: { children: React.ReactNode }) => {
         );
     }, []);
 
-    const dismiss = (id: number) =>
+    const dismiss = (id) =>
         setToasts((current) => current.filter((toast) => toast.id !== id));
 
     return (

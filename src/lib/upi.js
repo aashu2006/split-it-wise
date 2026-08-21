@@ -6,26 +6,24 @@
  */
 const UPI_ID_PATTERN = /^[a-zA-Z0-9._-]{2,256}@[a-zA-Z]{2,64}$/;
 
-export const isValidUpiId = (upiId: string): boolean =>
-    UPI_ID_PATTERN.test(upiId.trim());
+/**
+ * @param {string} upiId
+ * @returns {boolean}
+ */
+export const isValidUpiId = (upiId) => UPI_ID_PATTERN.test(upiId.trim());
 
 /**
  * Build a UPI deep link that opens GPay/PhonePe/Paytm with the payment
  * prefilled. Android follows these directly; on desktop nothing will handle the
  * scheme, so callers should treat the button as a phone-first convenience.
  *
- * @param upiId - Payee's UPI ID
- * @param payeeName - Payee's display name
- * @param amount - Amount in INR
- * @param note - Transaction note shown in the payment app
- * @returns A upi://pay link
+ * @param {string} upiId - Payee's UPI ID
+ * @param {string} payeeName - Payee's display name
+ * @param {number} amount - Amount in INR
+ * @param {string} note - Transaction note shown in the payment app
+ * @returns {string} A upi://pay link
  */
-export const buildUpiLink = (
-    upiId: string,
-    payeeName: string,
-    amount: number,
-    note: string
-): string => {
+export const buildUpiLink = (upiId, payeeName, amount, note) => {
     const params = new URLSearchParams({
         pa: upiId.trim(),
         pn: payeeName,

@@ -9,7 +9,7 @@ export default function JoinGroupPage() {
     const { user, loading: authLoading, signInWithGoogle } = useAuth();
     const router = useRouter();
     const params = useParams();
-    const groupId = params.groupId as string;
+    const groupId = params.groupId;
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");

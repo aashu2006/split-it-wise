@@ -11,7 +11,6 @@ import {
     serverTimestamp,
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { Settlement } from "@/types";
 import { getGroup } from "./groups";
 
 /**
@@ -21,20 +20,14 @@ import { getGroup } from "./groups";
  * already been spent, so folding it into the expenses collection would inflate
  * the group's spending totals every time someone paid a friend back.
  *
- * @param groupId - Group ID
- * @param from - User ID who paid
- * @param to - User ID who was paid
- * @param amount - Amount in INR
- * @param createdBy - User ID recording the settlement
- * @returns Settlement ID
+ * @param {string} groupId - Group ID
+ * @param {string} from - User ID who paid
+ * @param {string} to - User ID who was paid
+ * @param {number} amount - Amount in INR
+ * @param {string} createdBy - User ID recording the settlement
+ * @returns {Promise<string>} Settlement ID
  */
-export const addSettlement = async (
-    groupId: string,
-    from: string,
-    to: string,
-    amount: number,
-    createdBy: string
-): Promise<string> => {
+export const addSettlement = async (groupId, from, to, amount, createdBy) => {
     if (amount <= 0) {
         throw new Error("Amount must be greater than 0");
     }
@@ -57,10 +50,10 @@ export const addSettlement = async (
 
 /**
  * Get all settlements for a group
- * @param groupId - Group ID
- * @returns Array of settlements sorted by latest first
+ * @param {string} groupId - Group ID
+ * @returns {Promise<import("@/types").Settlement[]>} Array of settlements sorted by latest first
  */
-export const getGroupSettlements = async (groupId: string): Promise<Settlement[]> => {
+export const getGroupSettlements = async (groupId) => {
     const settlementsRef = collection(db, "settlements");
     const q = query(
         settlementsRef,
@@ -72,20 +65,17 @@ export const getGroupSettlements = async (groupId: string): Promise<Settlement[]
     return snapshot.docs.map((settlement) => ({
         id: settlement.id,
         ...settlement.data(),
-    })) as Settlement[];
+    }));
 };
 
 /**
  * Delete a settlement, for when one is recorded by mistake (creator or admin)
- * @param settlementId - Settlement ID
- * @param groupId - Group ID
- * @param requesterId - User ID making the request
+ * @param {string} settlementId - Settlement ID
+ * @param {string} groupId - Group ID
+ * @param {string} requesterId - User ID making the request
+ * @returns {Promise<void>}
  */
-export const deleteSettlement = async (
-    settlementId: string,
-    groupId: string,
-    requesterId: string
-): Promise<void> => {
+export const deleteSettlement = async (settlementId, groupId, requesterId) => {
     const settlementRef = doc(db, "settlements", settlementId);
     const settlementSnap = await getDoc(settlementRef);
 
@@ -93,7 +83,7 @@ export const deleteSettlement = async (
         throw new Error("Settlement not found");
     }
 
-    const settlement = settlementSnap.data() as Settlement;
+    const settlement = settlementSnap.data();
 
     const group = await getGroup(groupId);
     if (!group) {

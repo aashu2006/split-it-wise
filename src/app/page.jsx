@@ -3,7 +3,6 @@
 import { useAuth } from "@/context/AuthContext";
 import { useEffect, useState } from "react";
 import { getUserGroups } from "@/lib/groups";
-import { Group } from "@/types";
 import GroupCard from "@/components/GroupCard";
 import CreateGroupModal from "@/components/CreateGroupModal";
 import { useRouter } from "next/navigation";
@@ -11,7 +10,7 @@ import { useRouter } from "next/navigation";
 export default function Home() {
   const { user, loading, signInWithGoogle, logout } = useAuth();
   const router = useRouter();
-  const [groups, setGroups] = useState<Group[]>([]);
+  const [groups, setGroups] = useState([]);
   const [loadingGroups, setLoadingGroups] = useState(true);
   const [groupsError, setGroupsError] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);

@@ -1,16 +1,15 @@
 "use client";
 
-import { Group } from "@/types";
 import { useRouter } from "next/navigation";
 
-interface GroupCardProps {
-    group: Group;
-}
-
-export default function GroupCard({ group }: GroupCardProps) {
+/**
+ * @param {Object} props
+ * @param {import("@/types").Group} props.group
+ */
+export default function GroupCard({ group }) {
     const router = useRouter();
 
-    const formatDate = (timestamp: any) => {
+    const formatDate = (timestamp) => {
         if (!timestamp) return "";
         const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
         return date.toLocaleDateString("en-IN", {

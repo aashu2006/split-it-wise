@@ -1,5 +1,3 @@
-import type { NextConfig } from "next";
-
 const isDev = process.env.NODE_ENV === "development";
 
 /**
@@ -46,7 +44,8 @@ const securityHeaders = [
     { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
 ];
 
-const nextConfig: NextConfig = {
+/** @type {import("next").NextConfig} */
+const nextConfig = {
     async headers() {
         return [{ source: "/:path*", headers: securityHeaders }];
     },

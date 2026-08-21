@@ -9,7 +9,6 @@ import { getGroupExpenses } from "@/lib/expenses";
 import { getGroupSettlements } from "@/lib/settlements";
 import { useToast } from "@/context/ToastContext";
 import { calculateMemberBalances, calculateBalancesByUid, simplifyDebts } from "@/lib/calculations";
-import { Group, User, Expense, Settlement, Transfer } from "@/types";
 import MembersList from "@/components/MembersList";
 import ConfirmModal from "@/components/ConfirmModal";
 import AddExpenseModal from "@/components/AddExpenseModal";
@@ -22,13 +21,13 @@ export default function GroupDashboard() {
     const { user, loading: authLoading } = useAuth();
     const router = useRouter();
     const params = useParams();
-    const groupId = params.groupId as string;
+    const groupId = params.groupId;
 
-    const [group, setGroup] = useState<Group | null>(null);
-    const [expenses, setExpenses] = useState<Expense[]>([]);
-    const [settlements, setSettlements] = useState<Settlement[]>([]);
-    const [settlingTransfer, setSettlingTransfer] = useState<Transfer | null>(null);
-    const [ledgerProfiles, setLedgerProfiles] = useState<User[]>([]);
+    const [group, setGroup] = useState(null);
+    const [expenses, setExpenses] = useState([]);
+    const [settlements, setSettlements] = useState([]);
+    const [settlingTransfer, setSettlingTransfer] = useState(null);
+    const [ledgerProfiles, setLedgerProfiles] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const { showToast } = useToast();
@@ -50,7 +49,7 @@ export default function GroupDashboard() {
     const [inviteCopied, setInviteCopied] = useState(false);
     const [togglingInvites, setTogglingInvites] = useState(false);
     // Set only when copying failed, so the link can be selected by hand.
-    const [inviteFallback, setInviteFallback] = useState<string | null>(null);
+    const [inviteFallback, setInviteFallback] = useState(null);
 
     const loadGroupData = async () => {
         if (authLoading) return;
@@ -140,28 +139,28 @@ export default function GroupDashboard() {
     // Applied locally instead of refetching. The write has already been
     // acknowledged by Firestore at this point, so the local list and the server
     // agree; a reload would only cost a round trip to learn the same thing.
-    const handleExpenseAdded = (expense: Expense) =>
+    const handleExpenseAdded = (expense) =>
         setExpenses((current) => [expense, ...current]);
 
-    const handleExpenseDeleted = (expenseId: string) =>
+    const handleExpenseDeleted = (expenseId) =>
         setExpenses((current) => current.filter((expense) => expense.id !== expenseId));
 
-    const handleSettled = (settlement: Settlement) =>
+    const handleSettled = (settlement) =>
         setSettlements((current) => [settlement, ...current]);
 
-    const handleSettlementDeleted = (settlementId: string) =>
+    const handleSettlementDeleted = (settlementId) =>
         setSettlements((current) =>
             current.filter((settlement) => settlement.id !== settlementId)
         );
 
-    const handleMemberRemoved = (userId: string) =>
+    const handleMemberRemoved = (userId) =>
         setGroup((current) =>
             current
                 ? { ...current, members: current.members.filter((uid) => uid !== userId) }
                 : current
         );
 
-    const handleProfileUpdated = (upiId: string) =>
+    const handleProfileUpdated = (upiId) =>
         setLedgerProfiles((current) =>
             current.map((profile) =>
                 profile.uid === user?.uid ? { ...profile, upiId } : profile
@@ -213,7 +212,7 @@ export default function GroupDashboard() {
             await updateGroupName(groupId, newGroupName.trim(), user.uid);
             setGroup({ ...group, name: newGroupName.trim() });
             setIsRenaming(false);
-        } catch (error: any) {
+        } catch (error) {
             setRenameError(error.message || "Failed to rename group");
         } finally {
             setRenaming(false);
@@ -229,7 +228,7 @@ export default function GroupDashboard() {
         try {
             await setGroupJoinOpen(groupId, next, user.uid);
             setGroup({ ...group, joinOpen: next });
-        } catch (error: any) {
+        } catch (error) {
             showToast(error.message || "Failed to update the invite link");
         } finally {
             setTogglingInvites(false);
@@ -243,7 +242,7 @@ export default function GroupDashboard() {
         try {
             await deleteGroup(groupId, user.uid);
             router.push("/");
-        } catch (error: any) {
+        } catch (error) {
             showToast(error.message || "Failed to delete group");
             setDeleting(false);
             setShowDeleteModal(false);

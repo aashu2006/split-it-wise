@@ -4,20 +4,19 @@ import { useState } from "react";
 import { deleteSettlement } from "@/lib/settlements";
 import { useToast } from "@/context/ToastContext";
 import ConfirmModal from "./ConfirmModal";
-import { Settlement, Transfer, User } from "@/types";
 
-interface SettleUpProps {
-    transfers: Transfer[];
-    settlements: Settlement[];
-    members: User[];
-    currentUserId: string;
-    groupId: string;
-    isAdmin: boolean;
-    onSettle: (transfer: Transfer) => void;
-    /** Passed the id so the caller can drop it from its list without refetching. */
-    onSettlementDeleted: (settlementId: string) => void;
-}
-
+/**
+ * @param {Object} props
+ * @param {import("@/types").Transfer[]} props.transfers
+ * @param {import("@/types").Settlement[]} props.settlements
+ * @param {import("@/types").User[]} props.members
+ * @param {string} props.currentUserId
+ * @param {string} props.groupId
+ * @param {boolean} props.isAdmin
+ * @param {(transfer: import("@/types").Transfer) => void} props.onSettle
+ * @param {(settlementId: string) => void} props.onSettlementDeleted
+ *   Passed the id so the caller can drop it from its list without refetching.
+ */
 export default function SettleUp({
     transfers,
     settlements,
@@ -27,22 +26,22 @@ export default function SettleUp({
     isAdmin,
     onSettle,
     onSettlementDeleted,
-}: SettleUpProps) {
-    const [deleting, setDeleting] = useState<string | null>(null);
-    const [pendingUndo, setPendingUndo] = useState<Settlement | null>(null);
+}) {
+    const [deleting, setDeleting] = useState(null);
+    const [pendingUndo, setPendingUndo] = useState(null);
     const { showToast } = useToast();
 
-    const nameFor = (uid: string) =>
+    const nameFor = (uid) =>
         members.find((m) => m.uid === uid)?.name || "Someone who left";
 
-    const handleDelete = async (settlement: Settlement) => {
+    const handleDelete = async (settlement) => {
         setPendingUndo(null);
         setDeleting(settlement.id);
 
         try {
             await deleteSettlement(settlement.id, groupId, currentUserId);
             onSettlementDeleted(settlement.id);
-        } catch (error: any) {
+        } catch (error) {
             showToast(error.message || "Failed to undo the payment");
         } finally {
             setDeleting(null);

@@ -1,14 +1,12 @@
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { isValidUpiId } from "./upi";
 import { db } from "./firebase";
-import { User } from "@/types";
-import { User as FirebaseUser } from "firebase/auth";
 
 /**
  * Save user to Firestore if they don't exist
- * @param user - Firebase Auth User
+ * @param {import("firebase/auth").User} user - Firebase Auth User
  */
-export const saveUserIfNotExists = async (user: FirebaseUser) => {
+export const saveUserIfNotExists = async (user) => {
     const userRef = doc(db, "users", user.uid);
     const snap = await getDoc(userRef);
 
@@ -26,10 +24,10 @@ export const saveUserIfNotExists = async (user: FirebaseUser) => {
 
 /**
  * Get user by ID
- * @param userId - User ID
- * @returns User or null if not found
+ * @param {string} userId - User ID
+ * @returns {Promise<import("@/types").User | null>} User or null if not found
  */
-export const getUserById = async (userId: string): Promise<User | null> => {
+export const getUserById = async (userId) => {
     const userRef = doc(db, "users", userId);
     const snapshot = await getDoc(userRef);
 
@@ -37,15 +35,16 @@ export const getUserById = async (userId: string): Promise<User | null> => {
         return null;
     }
 
-    return snapshot.data() as User;
+    return snapshot.data();
 };
 
 /**
  * Save the signed-in user's UPI ID so others can pay them from a settle-up link
- * @param userId - User ID (must be the signed-in user; rules enforce this)
- * @param upiId - UPI ID, or an empty string to remove it
+ * @param {string} userId - User ID (must be the signed-in user; rules enforce this)
+ * @param {string} upiId - UPI ID, or an empty string to remove it
+ * @returns {Promise<void>}
  */
-export const saveUpiId = async (userId: string, upiId: string): Promise<void> => {
+export const saveUpiId = async (userId, upiId) => {
     const trimmed = upiId.trim();
     if (trimmed && !isValidUpiId(trimmed)) {
         throw new Error("That doesn't look like a UPI ID. Example: name@okhdfcbank");
@@ -57,10 +56,10 @@ export const saveUpiId = async (userId: string, upiId: string): Promise<void> =>
 
 /**
  * Get multiple users by their IDs
- * @param userIds - Array of user IDs
- * @returns Array of users
+ * @param {string[]} userIds - Array of user IDs
+ * @returns {Promise<import("@/types").User[]>} Array of users
  */
-export const getUsersByIds = async (userIds: string[]): Promise<User[]> => {
+export const getUsersByIds = async (userIds) => {
     if (userIds.length === 0) return [];
 
     // Fetched one document at a time rather than with a `where("uid", "in", ...)`
@@ -73,5 +72,5 @@ export const getUsersByIds = async (userIds: string[]): Promise<User[]> => {
 
     return snapshots
         .filter((snapshot) => snapshot.exists())
-        .map((snapshot) => snapshot.data() as User);
+        .map((snapshot) => snapshot.data());
 };

@@ -2,21 +2,23 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { saveUserIfNotExists } from "@/lib/user";
-import { User, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "firebase/auth";
+import { GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
 
-type AuthContextType = {
-    user: User | null;
-    loading: boolean;
-    signInWithGoogle: () => Promise<void>;
-    logout: () => Promise<void>;
-};
+/**
+ * @typedef {Object} AuthContextValue
+ * @property {import("firebase/auth").User | null} user
+ * @property {boolean} loading
+ * @property {() => Promise<void>} signInWithGoogle
+ * @property {() => Promise<void>} logout
+ */
 
-const AuthContext = createContext<AuthContextType | null>(null);
+/** @type {import("react").Context<AuthContextValue | null>} */
+const AuthContext = createContext(null);
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-    const [user, setUser] = useState<User | null>(null);
+export const AuthProvider = ({ children }) => {
+    const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {

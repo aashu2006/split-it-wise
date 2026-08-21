@@ -1,18 +1,16 @@
 "use client";
 
-import { useState } from "react";
 import AddExpenseForm from "./AddExpenseForm";
-import { Expense, User } from "@/types";
 
-interface AddExpenseModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    groupId: string;
-    members: User[];
-    currentUserId: string;
-    onExpenseAdded: (expense: Expense) => void;
-}
-
+/**
+ * @param {Object} props
+ * @param {boolean} props.isOpen
+ * @param {() => void} props.onClose
+ * @param {string} props.groupId
+ * @param {import("@/types").User[]} props.members
+ * @param {string} props.currentUserId
+ * @param {(expense: import("@/types").Expense) => void} props.onExpenseAdded
+ */
 export default function AddExpenseModal({
     isOpen,
     onClose,
@@ -20,8 +18,8 @@ export default function AddExpenseModal({
     members,
     currentUserId,
     onExpenseAdded,
-}: AddExpenseModalProps) {
-    const handleExpenseAdded = (expense: Expense) => {
+}) {
+    const handleExpenseAdded = (expense) => {
         onExpenseAdded(expense);
         onClose();
     };

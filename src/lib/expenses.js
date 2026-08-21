@@ -11,29 +11,28 @@ import {
     serverTimestamp,
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { Expense, SplitType } from "@/types";
 import { getGroup } from "./groups";
 
 /**
  * Add a new expense to a group
- * @param groupId - Group ID
- * @param amount - Amount in INR
- * @param description - Expense description
- * @param paidBy - User ID who paid
- * @param createdBy - User ID who created the expense
- * @param splitType - How the expense is split
- * @param splits - Map of uid to amount owed
- * @returns Expense ID
+ * @param {string} groupId - Group ID
+ * @param {number} amount - Amount in INR
+ * @param {string} description - Expense description
+ * @param {string} paidBy - User ID who paid
+ * @param {string} createdBy - User ID who created the expense
+ * @param {import("@/types").SplitType} splitType - How the expense is split
+ * @param {Object<string, number>} splits - Map of uid to amount owed
+ * @returns {Promise<string>} Expense ID
  */
 export const addExpense = async (
-    groupId: string,
-    amount: number,
-    description: string,
-    paidBy: string,
-    createdBy: string,
-    splitType: SplitType,
-    splits: { [uid: string]: number }
-): Promise<string> => {
+    groupId,
+    amount,
+    description,
+    paidBy,
+    createdBy,
+    splitType,
+    splits
+) => {
     // Validate amount
     if (amount <= 0) {
         throw new Error("Amount must be greater than 0");
@@ -56,10 +55,10 @@ export const addExpense = async (
 
 /**
  * Get all expenses for a group
- * @param groupId - Group ID
- * @returns Array of expenses sorted by latest first
+ * @param {string} groupId - Group ID
+ * @returns {Promise<import("@/types").Expense[]>} Array of expenses sorted by latest first
  */
-export const getGroupExpenses = async (groupId: string): Promise<Expense[]> => {
+export const getGroupExpenses = async (groupId) => {
     const expensesRef = collection(db, "expenses");
     const q = query(
         expensesRef,
@@ -71,20 +70,17 @@ export const getGroupExpenses = async (groupId: string): Promise<Expense[]> => {
     return snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
-    })) as Expense[];
+    }));
 };
 
 /**
  * Delete an expense (creator or admin only)
- * @param expenseId - Expense ID
- * @param groupId - Group ID
- * @param requesterId - User ID making the request
+ * @param {string} expenseId - Expense ID
+ * @param {string} groupId - Group ID
+ * @param {string} requesterId - User ID making the request
+ * @returns {Promise<void>}
  */
-export const deleteExpense = async (
-    expenseId: string,
-    groupId: string,
-    requesterId: string
-): Promise<void> => {
+export const deleteExpense = async (expenseId, groupId, requesterId) => {
     // Get the expense to check creator
     const expenseRef = doc(db, "expenses", expenseId);
     const expenseSnap = await getDoc(expenseRef);
@@ -93,7 +89,7 @@ export const deleteExpense = async (
         throw new Error("Expense not found");
     }
 
-    const expense = expenseSnap.data() as Expense;
+    const expense = expenseSnap.data();
 
     // Get group to check admin
     const group = await getGroup(groupId);

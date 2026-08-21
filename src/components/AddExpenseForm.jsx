@@ -4,44 +4,41 @@ import { useState, useEffect } from "react";
 import { Timestamp } from "firebase/firestore";
 import { addExpense } from "@/lib/expenses";
 import { splitEqually, splitByPercentage } from "@/lib/calculations";
-import { Expense, User, SplitType } from "@/types";
 
-interface AddExpenseFormProps {
-    groupId: string;
-    members: User[];
-    currentUserId: string;
-    /**
-     * Passed the expense as it was stored, so the caller can add it to its list
-     * without refetching the group.
-     */
-    onExpenseAdded: (expense: Expense) => void;
-}
-
+/**
+ * @param {Object} props
+ * @param {string} props.groupId
+ * @param {import("@/types").User[]} props.members
+ * @param {string} props.currentUserId
+ * @param {(expense: import("@/types").Expense) => void} props.onExpenseAdded
+ *   Passed the expense as it was stored, so the caller can add it to its list
+ *   without refetching the group.
+ */
 export default function AddExpenseForm({
     groupId,
     members,
     currentUserId,
     onExpenseAdded,
-}: AddExpenseFormProps) {
+}) {
     const [amount, setAmount] = useState("");
     const [description, setDescription] = useState("");
     const [paidBy, setPaidBy] = useState(currentUserId);
-    const [splitType, setSplitType] = useState<SplitType>("equal");
+    const [splitType, setSplitType] = useState("equal");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
     // Equal split: which members are included
-    const [selectedMembers, setSelectedMembers] = useState<Set<string>>(
+    const [selectedMembers, setSelectedMembers] = useState(
         new Set(members.map((m) => m.uid))
     );
 
     // Exact split: amount per member
-    const [exactAmounts, setExactAmounts] = useState<{ [uid: string]: string }>(
+    const [exactAmounts, setExactAmounts] = useState(
         Object.fromEntries(members.map((m) => [m.uid, ""]))
     );
 
     // Percentage split: percentage per member
-    const [percentages, setPercentages] = useState<{ [uid: string]: string }>(
+    const [percentages, setPercentages] = useState(
         Object.fromEntries(members.map((m) => [m.uid, ""]))
     );
 
@@ -52,7 +49,7 @@ export default function AddExpenseForm({
         setPercentages(Object.fromEntries(members.map((m) => [m.uid, ""])));
     }, [members]);
 
-    const toggleMember = (uid: string) => {
+    const toggleMember = (uid) => {
         const next = new Set(selectedMembers);
         if (next.has(uid)) {
             if (next.size <= 1) return; // at least 1 member
@@ -67,26 +64,26 @@ export default function AddExpenseForm({
     // a split that looks exact on screen can fail a naive equality check.
     const amountPaise = Math.round((parseFloat(amount) || 0) * 100);
 
-    const getExactTotalPaise = (): number =>
+    const getExactTotalPaise = () =>
         Object.values(exactAmounts).reduce(
             (total, value) => total + Math.round((parseFloat(value) || 0) * 100),
             0
         );
 
     // Percentages are tracked in hundredths of a percent for the same reason.
-    const getPercentageTotalBasisPoints = (): number =>
+    const getPercentageTotalBasisPoints = () =>
         Object.values(percentages).reduce(
             (total, value) => total + Math.round((parseFloat(value) || 0) * 100),
             0
         );
 
-    const getExactTotal = (): number => getExactTotalPaise() / 100;
-    const getPercentageTotal = (): number => getPercentageTotalBasisPoints() / 100;
+    const getExactTotal = () => getExactTotalPaise() / 100;
+    const getPercentageTotal = () => getPercentageTotalBasisPoints() / 100;
 
     const exactTotalMatches = amountPaise > 0 && getExactTotalPaise() === amountPaise;
     const percentageTotalMatches = getPercentageTotalBasisPoints() === 10000;
 
-    const buildSplits = (): { [uid: string]: number } | null => {
+    const buildSplits = () => {
         const amountNum = parseFloat(amount);
         if (!amount || isNaN(amountNum) || amountNum <= 0) return null;
 
@@ -97,7 +94,7 @@ export default function AddExpenseForm({
         }
 
         if (splitType === "exact") {
-            const splits: { [uid: string]: number } = {};
+            const splits = {};
             for (const m of members) {
                 const val = parseFloat(exactAmounts[m.uid] || "0");
                 if (isNaN(val) || val < 0) return null;
@@ -111,7 +108,7 @@ export default function AddExpenseForm({
         }
 
         if (splitType === "percentage") {
-            const pcts: { [uid: string]: number } = {};
+            const pcts = {};
             for (const m of members) {
                 const pct = parseFloat(percentages[m.uid] || "0");
                 if (isNaN(pct) || pct < 0) return null;
@@ -125,7 +122,7 @@ export default function AddExpenseForm({
         return null;
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setError("");
 
@@ -171,7 +168,7 @@ export default function AddExpenseForm({
             // a local stand-in for the serverTimestamp() we can't see from here
             // — it only drives the displayed date and the list order, and this
             // expense sorts to the top either way.
-            const created: Expense = {
+            const created = {
                 id: expenseId,
                 groupId,
                 amount: Number(amountNum.toFixed(2)),
@@ -192,7 +189,7 @@ export default function AddExpenseForm({
             setExactAmounts(Object.fromEntries(members.map((m) => [m.uid, ""])));
             setPercentages(Object.fromEntries(members.map((m) => [m.uid, ""])));
             onExpenseAdded(created);
-        } catch (err: any) {
+        } catch (err) {
             setError(err.message || "Failed to add expense");
         } finally {
             setLoading(false);
@@ -276,7 +273,7 @@ export default function AddExpenseForm({
                     Split method
                 </label>
                 <div className="flex rounded-lg border border-gray-300 overflow-hidden">
-                    {(["equal", "exact", "percentage"] as SplitType[]).map((type) => (
+                    {["equal", "exact", "percentage"].map((type) => (
                         <button
                             key={type}
                             type="button"
