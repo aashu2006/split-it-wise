@@ -254,12 +254,38 @@ describe("upi", () => {
     it("builds a link the payment apps can read", () => {
         const link = buildUpiLink("akshat@ybl", "Akshat Patil", 300.5, "Goa trip settle up");
         expect(link).toBe(
-            "upi://pay?pa=akshat%40ybl&pn=Akshat+Patil&am=300.50&cu=INR&tn=Goa+trip+settle+up"
+            "upi://pay?pa=akshat@ybl&pn=Akshat%20Patil&am=300.50&cu=INR&tn=Goa%20trip%20settle%20up"
         );
+    });
+
+    // The bug this pair exists for: URLSearchParams encodes a space as "+",
+    // which is right for a form body and wrong for a URI query. Payment apps
+    // read it as a literal plus and reject the payload — reported to the user
+    // as "limit exceeded", which points nowhere near the actual cause.
+    it("encodes spaces as %20, never as +", () => {
+        const link = buildUpiLink("a@ybl", "Akshat Patil", 10, "Goa trip settle up");
+        expect(link).not.toContain("+");
+        expect(link).toContain("pn=Akshat%20Patil");
+    });
+
+    it("leaves the @ in the payee address unencoded", () => {
+        expect(buildUpiLink("akshat@ybl", "A", 10, "x")).toContain("pa=akshat@ybl");
+    });
+
+    it("escapes characters that would otherwise break the query", () => {
+        const link = buildUpiLink("a@ybl", "A&B", 10, "50% off #trip");
+        expect(link).toContain("pn=A%26B");
+        expect(link).toContain("tn=50%25%20off%20%23trip");
     });
 
     it("always sends two decimal places", () => {
         expect(buildUpiLink("a@ybl", "A", 300, "x")).toContain("am=300.00");
+    });
+
+    it("trims an over-long note rather than sending it whole", () => {
+        const link = buildUpiLink("a@ybl", "A", 10, "x".repeat(200));
+        const note = link.match(/tn=([^&]*)/)[1];
+        expect(note.length).toBeLessThanOrEqual(50);
     });
 });
 
