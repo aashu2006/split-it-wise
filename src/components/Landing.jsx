@@ -86,14 +86,15 @@ export default function Landing({ onSignIn, isFirebaseConfigured = true }) {
     return (
         <div className="min-h-screen bg-background">
             {/* Only ever seen by someone running the app without a .env.local.
-                Sign-in silently does nothing in that state, which reads as a
-                broken button unless the page says why. */}
+                Says what the sign-in button will actually do, since it signs
+                into sample data rather than a Google account. */}
             {!isFirebaseConfigured && (
                 <div className="border-b border-amber-200 bg-amber-50 px-5 py-3 text-center text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
-                    <span className="font-medium">Preview mode.</span> Firebase isn&apos;t
-                    configured, so sign-in is disabled — the UI is fully browsable. See{" "}
+                    <span className="font-medium">Demo mode.</span> No Firebase config
+                    found, so signing in opens a sample account with example groups and
+                    expenses. Nothing is saved. See{" "}
                     <span className="font-mono text-xs">README</span> step 6 to connect a
-                    project.
+                    real project.
                 </div>
             )}
             {/* ---------- Hero ---------- */}

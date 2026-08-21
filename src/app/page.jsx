@@ -62,7 +62,15 @@ export default function Home() {
       {/* Header */}
       <header className="bg-card border-b border-border">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-foreground">Split-It-Wise</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-foreground">Split-It-Wise</h1>
+            {/* Easy to forget you're on fixtures once you're inside the app. */}
+            {!isFirebaseConfigured && (
+              <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 font-mono text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+                demo
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-1">
             <ThemeToggle />
             <button

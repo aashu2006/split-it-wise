@@ -1,12 +1,21 @@
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { isValidUpiId } from "./upi";
 import { db } from "./firebase";
+import {
+    isDemoMode,
+    demoGetUserById,
+    demoGetUsersByIds,
+    demoSaveUpiId,
+} from "./demo";
 
 /**
  * Save user to Firestore if they don't exist
  * @param {import("firebase/auth").User} user - Firebase Auth User
  */
 export const saveUserIfNotExists = async (user) => {
+    // The demo user is already in the seeded store.
+    if (isDemoMode) return;
+
     const userRef = doc(db, "users", user.uid);
     const snap = await getDoc(userRef);
 
@@ -28,6 +37,8 @@ export const saveUserIfNotExists = async (user) => {
  * @returns {Promise<import("@/types").User | null>} User or null if not found
  */
 export const getUserById = async (userId) => {
+    if (isDemoMode) return demoGetUserById(userId);
+
     const userRef = doc(db, "users", userId);
     const snapshot = await getDoc(userRef);
 
@@ -50,6 +61,8 @@ export const saveUpiId = async (userId, upiId) => {
         throw new Error("That doesn't look like a UPI ID. Example: name@okhdfcbank");
     }
 
+    if (isDemoMode) return demoSaveUpiId(userId, trimmed);
+
     const userRef = doc(db, "users", userId);
     await updateDoc(userRef, { upiId: trimmed });
 };
@@ -61,6 +74,7 @@ export const saveUpiId = async (userId, upiId) => {
  */
 export const getUsersByIds = async (userIds) => {
     if (userIds.length === 0) return [];
+    if (isDemoMode) return demoGetUsersByIds(userIds);
 
     // Fetched one document at a time rather than with a `where("uid", "in", ...)`
     // query: that query needs list permission on /users, and list is all or

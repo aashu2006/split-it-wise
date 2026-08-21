@@ -12,6 +12,13 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { getGroup } from "./groups";
+import {
+    isDemoMode,
+    demoAddExpense,
+    demoDeleteExpense,
+    demoGetExpense,
+    demoGetGroupExpenses,
+} from "./demo";
 
 /**
  * Add a new expense to a group
@@ -38,8 +45,7 @@ export const addExpense = async (
         throw new Error("Amount must be greater than 0");
     }
 
-    const expensesRef = collection(db, "expenses");
-    const docRef = await addDoc(expensesRef, {
+    const record = {
         groupId,
         amount: Number(amount.toFixed(2)),
         description: description.trim(),
@@ -47,6 +53,13 @@ export const addExpense = async (
         createdBy,
         splitType,
         splits,
+    };
+
+    if (isDemoMode) return demoAddExpense(record);
+
+    const expensesRef = collection(db, "expenses");
+    const docRef = await addDoc(expensesRef, {
+        ...record,
         createdAt: serverTimestamp(),
     });
 
@@ -59,6 +72,8 @@ export const addExpense = async (
  * @returns {Promise<import("@/types").Expense[]>} Array of expenses sorted by latest first
  */
 export const getGroupExpenses = async (groupId) => {
+    if (isDemoMode) return demoGetGroupExpenses(groupId);
+
     const expensesRef = collection(db, "expenses");
     const q = query(
         expensesRef,
@@ -82,14 +97,15 @@ export const getGroupExpenses = async (groupId) => {
  */
 export const deleteExpense = async (expenseId, groupId, requesterId) => {
     // Get the expense to check creator
-    const expenseRef = doc(db, "expenses", expenseId);
-    const expenseSnap = await getDoc(expenseRef);
+    const expense = isDemoMode
+        ? await demoGetExpense(expenseId)
+        : await getDoc(doc(db, "expenses", expenseId)).then((snap) =>
+              snap.exists() ? snap.data() : null
+          );
 
-    if (!expenseSnap.exists()) {
+    if (!expense) {
         throw new Error("Expense not found");
     }
-
-    const expense = expenseSnap.data();
 
     // Get group to check admin
     const group = await getGroup(groupId);
@@ -105,5 +121,7 @@ export const deleteExpense = async (expenseId, groupId, requesterId) => {
         throw new Error("Only expense creator or group admin can delete expenses");
     }
 
-    await deleteDoc(expenseRef);
+    if (isDemoMode) return demoDeleteExpense(expenseId);
+
+    await deleteDoc(doc(db, "expenses", expenseId));
 };

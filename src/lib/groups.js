@@ -15,6 +15,19 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { calculateBalancesByUid } from "./calculations";
+import {
+    isDemoMode,
+    demoAddMemberToGroup,
+    demoCreateGroup,
+    demoDeleteGroup,
+    demoGetGroup,
+    demoGetGroupExpenses,
+    demoGetGroupSettlements,
+    demoGetUserGroups,
+    demoRemoveMember,
+    demoSetGroupJoinOpen,
+    demoUpdateGroupName,
+} from "./demo";
 
 /**
  * Create a new group
@@ -23,6 +36,8 @@ import { calculateBalancesByUid } from "./calculations";
  * @returns {Promise<string>} Group ID
  */
 export const createGroup = async (name, adminId) => {
+    if (isDemoMode) return demoCreateGroup(name, adminId);
+
     const groupRef = doc(collection(db, "groups"));
     const groupId = groupRef.id;
 
@@ -44,6 +59,8 @@ export const createGroup = async (name, adminId) => {
  * @returns {Promise<import("@/types").Group[]>} Array of groups
  */
 export const getUserGroups = async (userId) => {
+    if (isDemoMode) return demoGetUserGroups(userId);
+
     const groupsRef = collection(db, "groups");
     const q = query(groupsRef, where("members", "array-contains", userId));
     const snapshot = await getDocs(q);
@@ -60,6 +77,8 @@ export const getUserGroups = async (userId) => {
  * @returns {Promise<import("@/types").Group | null>} Group or null if not found
  */
 export const getGroup = async (groupId) => {
+    if (isDemoMode) return demoGetGroup(groupId);
+
     const groupRef = doc(db, "groups", groupId);
     const snapshot = await getDoc(groupRef);
 
@@ -80,6 +99,8 @@ export const getGroup = async (groupId) => {
  * @returns {Promise<void>}
  */
 export const addMemberToGroup = async (groupId, userId) => {
+    if (isDemoMode) return demoAddMemberToGroup(groupId, userId);
+
     const groupRef = doc(db, "groups", groupId);
     await updateDoc(groupRef, {
         members: arrayUnion(userId),
@@ -113,15 +134,20 @@ export const removeMemberFromGroup = async (groupId, userId, requesterId) => {
     // Queried here rather than through lib/expenses and lib/settlements to keep
     // this module free of a circular import (both of those import getGroup from
     // this file).
-    const [expenses, settlements] = await Promise.all([
-        getDocs(query(collection(db, "expenses"), where("groupId", "==", groupId))),
-        getDocs(query(collection(db, "settlements"), where("groupId", "==", groupId))),
-    ]);
-    const balances = calculateBalancesByUid(
-        expenses.docs.map((expense) => expense.data()),
-        group.members,
-        settlements.docs.map((settlement) => settlement.data())
-    );
+    const [expenses, settlements] = isDemoMode
+        ? await Promise.all([
+              demoGetGroupExpenses(groupId),
+              demoGetGroupSettlements(groupId),
+          ])
+        : await Promise.all([
+              getDocs(query(collection(db, "expenses"), where("groupId", "==", groupId))),
+              getDocs(query(collection(db, "settlements"), where("groupId", "==", groupId))),
+          ]).then(([expenseSnap, settlementSnap]) => [
+              expenseSnap.docs.map((expense) => expense.data()),
+              settlementSnap.docs.map((settlement) => settlement.data()),
+          ]);
+
+    const balances = calculateBalancesByUid(expenses, group.members, settlements);
 
     const balance = balances[userId] ?? 0;
     if (balance !== 0) {
@@ -131,6 +157,8 @@ export const removeMemberFromGroup = async (groupId, userId, requesterId) => {
                 : `They still owe ₹${Math.abs(balance).toFixed(2)}. Settle up before removing them.`
         );
     }
+
+    if (isDemoMode) return demoRemoveMember(groupId, userId);
 
     const groupRef = doc(db, "groups", groupId);
     await updateDoc(groupRef, {
@@ -157,6 +185,8 @@ export const setGroupJoinOpen = async (groupId, joinOpen, requesterId) => {
     if (!group) throw new Error("Group not found");
     if (group.adminId !== requesterId) throw new Error("Only admin can change the invite link");
 
+    if (isDemoMode) return demoSetGroupJoinOpen(groupId, joinOpen);
+
     const groupRef = doc(db, "groups", groupId);
     await updateDoc(groupRef, {
         joinOpen,
@@ -175,6 +205,8 @@ export const updateGroupName = async (groupId, newName, requesterId) => {
     const group = await getGroup(groupId);
     if (!group) throw new Error("Group not found");
     if (group.adminId !== requesterId) throw new Error("Only admin can rename group");
+
+    if (isDemoMode) return demoUpdateGroupName(groupId, newName);
 
     const groupRef = doc(db, "groups", groupId);
     await updateDoc(groupRef, {
@@ -205,6 +237,8 @@ export const deleteGroup = async (groupId, requesterId) => {
     const group = await getGroup(groupId);
     if (!group) throw new Error("Group not found");
     if (group.adminId !== requesterId) throw new Error("Only admin can delete group");
+
+    if (isDemoMode) return demoDeleteGroup(groupId);
 
     for (const collectionName of ["expenses", "settlements"]) {
         const owned = await getDocs(

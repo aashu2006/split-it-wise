@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { saveUserIfNotExists } from "@/lib/user";
 import { GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "firebase/auth";
 import { auth, isFirebaseConfigured } from "@/lib/firebase";
+import { isDemoMode, DEMO_AUTH_USER } from "@/lib/demo";
 
 
 /**
@@ -57,10 +58,10 @@ export const AuthProvider = ({ children }) => {
     ];
 
     const signInWithGoogle = async () => {
-        if (!auth) {
-            console.warn(
-                "Sign-in is disabled because Firebase isn't configured. See README step 6."
-            );
+        // No Firebase: drop into the seeded demo account instead of doing
+        // nothing, so the whole signed-in UI is reachable from a bare clone.
+        if (isDemoMode) {
+            setUser(DEMO_AUTH_USER);
             return;
         }
 
@@ -75,7 +76,10 @@ export const AuthProvider = ({ children }) => {
     };
 
     const logout = async () => {
-        if (!auth) return;
+        if (isDemoMode) {
+            setUser(null);
+            return;
+        }
         await signOut(auth);
     };
 

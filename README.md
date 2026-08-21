@@ -74,6 +74,30 @@ or API layer, so security lives in `firestore.rules` rather than in the app code
 
 ## Running it locally
 
+### Just changing the UI? Skip Firebase entirely
+
+```bash
+git clone https://github.com/aashu2006/split-it-wise.git
+cd split-it-wise
+npm install
+npm run dev
+```
+
+With no `.env.local`, the app starts in **demo mode**. Click *Continue with Google* and
+you're signed in as a sample account with two groups, six expenses across all three
+split types, a recorded settlement and a former member who still owes money — enough to
+reach every screen and almost every UI branch. Data lives in memory, so a reload puts it
+back to the seed and nothing leaves your machine.
+
+You're admin of one group and not the other, so the admin-only controls are reachable
+both ways. The fixtures live in [`src/lib/demo.js`](src/lib/demo.js).
+
+Demo mode is only ever active when the Firebase config is absent, so it can't shadow
+real data. For anything touching auth, Firestore or the security rules, do the full
+setup below.
+
+### Full setup
+
 You'll need your **own Firebase project** to develop against. It's free and takes about
 five minutes.
 

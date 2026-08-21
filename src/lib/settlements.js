@@ -12,6 +12,13 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { getGroup } from "./groups";
+import {
+    isDemoMode,
+    demoAddSettlement,
+    demoDeleteSettlement,
+    demoGetGroupSettlements,
+    demoGetSettlement,
+} from "./demo";
 
 /**
  * Record a repayment between two members
@@ -35,13 +42,19 @@ export const addSettlement = async (groupId, from, to, amount, createdBy) => {
         throw new Error("Cannot settle up with yourself");
     }
 
-    const settlementsRef = collection(db, "settlements");
-    const docRef = await addDoc(settlementsRef, {
+    const record = {
         groupId,
         from,
         to,
         amount: Number(amount.toFixed(2)),
         createdBy,
+    };
+
+    if (isDemoMode) return demoAddSettlement(record);
+
+    const settlementsRef = collection(db, "settlements");
+    const docRef = await addDoc(settlementsRef, {
+        ...record,
         createdAt: serverTimestamp(),
     });
 
@@ -54,6 +67,8 @@ export const addSettlement = async (groupId, from, to, amount, createdBy) => {
  * @returns {Promise<import("@/types").Settlement[]>} Array of settlements sorted by latest first
  */
 export const getGroupSettlements = async (groupId) => {
+    if (isDemoMode) return demoGetGroupSettlements(groupId);
+
     const settlementsRef = collection(db, "settlements");
     const q = query(
         settlementsRef,
@@ -76,14 +91,15 @@ export const getGroupSettlements = async (groupId) => {
  * @returns {Promise<void>}
  */
 export const deleteSettlement = async (settlementId, groupId, requesterId) => {
-    const settlementRef = doc(db, "settlements", settlementId);
-    const settlementSnap = await getDoc(settlementRef);
+    const settlement = isDemoMode
+        ? await demoGetSettlement(settlementId)
+        : await getDoc(doc(db, "settlements", settlementId)).then((snap) =>
+              snap.exists() ? snap.data() : null
+          );
 
-    if (!settlementSnap.exists()) {
+    if (!settlement) {
         throw new Error("Settlement not found");
     }
-
-    const settlement = settlementSnap.data();
 
     const group = await getGroup(groupId);
     if (!group) {
@@ -97,5 +113,7 @@ export const deleteSettlement = async (settlementId, groupId, requesterId) => {
         throw new Error("Only the person who recorded it or the group admin can delete it");
     }
 
-    await deleteDoc(settlementRef);
+    if (isDemoMode) return demoDeleteSettlement(settlementId);
+
+    await deleteDoc(doc(db, "settlements", settlementId));
 };
