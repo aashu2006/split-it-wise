@@ -14,7 +14,7 @@ import { splitEqually } from "@/lib/calculations";
  */
 
 const GoogleMark = () => (
-    <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
+    <svg className="w-5 h-5 " viewBox="0 0 24 24" aria-hidden="true">
         <path
             fill="#4285F4"
             d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -37,13 +37,13 @@ const GoogleMark = () => (
 const SignInButton = ({ onSignIn, className = "" }) => (
     <button
         onClick={onSignIn}
-        className={`group inline-flex items-center gap-3 rounded-full bg-foreground px-7 py-3.5 font-medium text-background shadow-lg transition-all hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 ${className}`}
+        className={`group inline-flex items-center gap-3 rounded-full bg-foreground px-7 py-3.5 font-medium text-background shadow-lg transition-all hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 ${className} cursor-pointer`}
     >
         <span className="grid place-items-center rounded-full bg-background p-1">
             <GoogleMark />
         </span>
         Continue with Google
-        <span className="transition-transform group-hover:translate-x-0.5">→</span>
+        <span className="transition-transform group-hover:translate-x-0.5 ">→</span>
     </button>
 );
 
