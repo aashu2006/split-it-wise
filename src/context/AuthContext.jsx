@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { saveUserIfNotExists } from "@/lib/user";
 import { GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { auth, isFirebaseConfigured } from "@/lib/firebase";
 
 
 /**
@@ -12,6 +12,9 @@ import { auth } from "@/lib/firebase";
  * @property {boolean} loading
  * @property {() => Promise<void>} signInWithGoogle
  * @property {() => Promise<void>} logout
+ * @property {boolean} isFirebaseConfigured
+ *   False when .env.local is missing. The UI still renders, signed out, so a
+ *   contributor can work on components without a Firebase project.
  */
 
 /** @type {import("react").Context<AuthContextValue | null>} */
@@ -19,9 +22,16 @@ const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
+    // Without Firebase config there is no auth state to wait for, so don't
+    // start in a loading state at all — otherwise the app would sit on the
+    // spinner forever with nothing coming to clear it.
+    const [loading, setLoading] = useState(isFirebaseConfigured);
 
     useEffect(() => {
+        // lib/firebase has already explained what's missing; just stay signed
+        // out so the UI still renders.
+        if (!auth) return;
+
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
             setUser(currentUser);
 
@@ -47,6 +57,13 @@ export const AuthProvider = ({ children }) => {
     ];
 
     const signInWithGoogle = async () => {
+        if (!auth) {
+            console.warn(
+                "Sign-in is disabled because Firebase isn't configured. See README step 6."
+            );
+            return;
+        }
+
         const provider = new GoogleAuthProvider();
         try {
             await signInWithPopup(auth, provider);
@@ -58,11 +75,14 @@ export const AuthProvider = ({ children }) => {
     };
 
     const logout = async () => {
+        if (!auth) return;
         await signOut(auth);
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, signInWithGoogle, logout }}>
+        <AuthContext.Provider
+            value={{ user, loading, signInWithGoogle, logout, isFirebaseConfigured }}
+        >
             {children}
         </AuthContext.Provider>
     );

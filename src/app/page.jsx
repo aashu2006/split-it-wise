@@ -10,7 +10,7 @@ import Landing from "@/components/Landing";
 import { useRouter } from "next/navigation";
 
 export default function Home() {
-  const { user, loading, signInWithGoogle, logout } = useAuth();
+  const { user, loading, signInWithGoogle, logout, isFirebaseConfigured } = useAuth();
   const router = useRouter();
   const [groups, setGroups] = useState([]);
   const [loadingGroups, setLoadingGroups] = useState(true);
@@ -49,7 +49,12 @@ export default function Home() {
   }
 
   if (!user) {
-    return <Landing onSignIn={signInWithGoogle} />;
+    return (
+      <Landing
+        onSignIn={signInWithGoogle}
+        isFirebaseConfigured={isFirebaseConfigured}
+      />
+    );
   }
 
   return (

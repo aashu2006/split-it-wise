@@ -80,10 +80,22 @@ const SPLIT_METHODS = [
 /**
  * @param {Object} props
  * @param {() => void} props.onSignIn
+ * @param {boolean} [props.isFirebaseConfigured]
  */
-export default function Landing({ onSignIn }) {
+export default function Landing({ onSignIn, isFirebaseConfigured = true }) {
     return (
         <div className="min-h-screen bg-background">
+            {/* Only ever seen by someone running the app without a .env.local.
+                Sign-in silently does nothing in that state, which reads as a
+                broken button unless the page says why. */}
+            {!isFirebaseConfigured && (
+                <div className="border-b border-amber-200 bg-amber-50 px-5 py-3 text-center text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+                    <span className="font-medium">Preview mode.</span> Firebase isn&apos;t
+                    configured, so sign-in is disabled — the UI is fully browsable. See{" "}
+                    <span className="font-mono text-xs">README</span> step 6 to connect a
+                    project.
+                </div>
+            )}
             {/* ---------- Hero ---------- */}
             <section className="relative overflow-hidden">
                 <div className="ledger-grid absolute inset-0" aria-hidden="true" />
