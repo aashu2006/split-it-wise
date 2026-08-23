@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
     calculateBalancesByUid,
     calculateMemberBalances,
+    formatBalance,
     simplifyDebts,
     splitByPercentage,
     splitEqually,
@@ -286,6 +287,33 @@ describe("upi", () => {
         const link = buildUpiLink("a@ybl", "A", 10, "x".repeat(200));
         const note = link.match(/tn=([^&]*)/)[1];
         expect(note.length).toBeLessThanOrEqual(50);
+    });
+});
+
+describe("formatBalance", () => {
+    it("reads as a statement about the person, not about you", () => {
+        // It renders under every member's name, so second person would be
+        // wrong on every row except the signed-in user's.
+        expect(formatBalance(300).text).toBe("Is owed ₹300.00");
+        expect(formatBalance(-300).text).toBe("Owes ₹300.00");
+        expect(formatBalance(0).text).toBe("Settled");
+    });
+
+    it("colour-codes the three states", () => {
+        expect(formatBalance(1).color).toBe("green");
+        expect(formatBalance(-1).color).toBe("red");
+        expect(formatBalance(0).color).toBe("gray");
+    });
+
+    it("shows a debt as a positive number", () => {
+        expect(formatBalance(-45.5).text).toBe("Owes ₹45.50");
+    });
+
+    it("is written in English only", () => {
+        // The balances used to read "lena hai" / "dena hai".
+        for (const balance of [250, -250, 0]) {
+            expect(formatBalance(balance).text).toMatch(/^[A-Za-z₹0-9. ]+$/);
+        }
     });
 });
 

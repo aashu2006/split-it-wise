@@ -115,11 +115,12 @@ export default function Landing({ onSignIn, isFirebaseConfigured = true }) {
                             for hostel rooms, road trips and chai runs
                         </p>
 
-                        {/* The app's own words for a balance, used as the headline. */}
+        {/* The two balance states, in the same green and red the app uses for
+                            them everywhere else. */}
                         <h1 className="animate-in fade-in slide-in-from-bottom-3 duration-700 text-5xl font-bold leading-[1.05] tracking-tight sm:text-7xl">
-                            <span className="text-green-600 dark:text-green-400">Lena hai</span>
-                            <span className="text-muted-foreground"> ya </span>
-                            <span className="text-red-600 dark:text-red-400">dena hai</span>
+                            <span className="text-green-600 dark:text-green-400">Owed</span>
+                            <span className="text-muted-foreground"> or </span>
+                            <span className="text-red-600 dark:text-red-400">owing</span>
                             <span className="text-muted-foreground">?</span>
                         </h1>
 
@@ -260,13 +261,13 @@ export default function Landing({ onSignIn, isFirebaseConfigured = true }) {
                                 <div className="flex items-center justify-between rounded-lg border border-green-200 bg-green-50 px-4 py-3 dark:border-green-900 dark:bg-green-950">
                                     <span className="text-sm font-medium">Rahul</span>
                                     <span className="tabular font-mono text-sm text-green-700 dark:text-green-300">
-                                        ₹300.00 lena hai
+                                        Is owed ₹300.00
                                     </span>
                                 </div>
                                 <div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 dark:border-red-900 dark:bg-red-950">
                                     <span className="text-sm font-medium">Priya</span>
                                     <span className="tabular font-mono text-sm text-red-700 dark:text-red-300">
-                                        ₹300.00 dena hai
+                                        Owes ₹300.00
                                     </span>
                                 </div>
                             </div>

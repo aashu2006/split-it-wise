@@ -33,7 +33,7 @@ open source, this is a friendly place to start.
 - Delete an expense (creator or admin)
 
 ### Balances
-- Per-person balance: **"₹X lena hai"** (you're owed) or **"₹X dena hai"** (you owe)
+- Per-person balance: **"Is owed ₹X"** or **"Owes ₹X"**, colour-coded green and red
 - All money maths runs in integer paise, so balances always sum to exactly zero, with
   no drift from rounding ₹100 three ways
 - Anyone removed from a group while still owing money stays visible in the ledger,

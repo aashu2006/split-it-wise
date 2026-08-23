@@ -243,19 +243,24 @@ export const calculateMemberBalances = (
 };
 
 /**
- * Format balance for display
+ * Format balance for display.
+ *
+ * Worded in the third person because this renders under every member's name,
+ * not just the signed-in user's — "you get back" would be wrong on four rows
+ * out of five.
+ *
  * @param {number} balance - Balance amount
  * @returns {{ text: string, color: "green" | "red" | "gray" }} Formatted string with color indicator
  */
 export const formatBalance = (balance) => {
     if (balance > 0) {
         return {
-            text: `₹${balance.toFixed(2)} lena hai`,
+            text: `Is owed ₹${balance.toFixed(2)}`,
             color: "green",
         };
     } else if (balance < 0) {
         return {
-            text: `₹${Math.abs(balance).toFixed(2)} dena hai`,
+            text: `Owes ₹${Math.abs(balance).toFixed(2)}`,
             color: "red",
         };
     } else {
