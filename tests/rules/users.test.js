@@ -28,11 +28,12 @@ beforeEach(async () => {
             photoURL: "",
             createdAt: EARLIER,
         });
-        // Written before profiles stopped carrying an email.
+        // Written back when profiles also stored an email and a UPI ID.
         await setDoc(doc(db, "users", BOB), {
             uid: BOB,
             name: "Bob",
             email: "bob@example.com",
+            upiId: "bob@ybl",
             photoURL: "",
             createdAt: EARLIER,
         });
@@ -51,7 +52,7 @@ describe("reading profiles", () => {
         await assertFails(getDoc(doc(anon(env), "users", ALICE)));
     });
 
-    // Listing would hand out every user's name and UPI ID at once.
+    // Listing would hand out every user's name and photo at once.
     it("refuses listing the collection", async () => {
         await assertFails(getDocs(collection(as(env, ALICE), "users")));
     });
@@ -81,28 +82,30 @@ describe("creating a profile", () => {
 });
 
 describe("updating a profile", () => {
-    it("lets an old profile strip its email (syncUserProfile)", async () => {
-        await assertSucceeds(updateDoc(doc(as(env, BOB), "users", BOB), { email: deleteField() }));
-    });
-
-    it("saves a UPI ID that also strips the email (saveUpiId)", async () => {
+    it("lets an old profile strip its email and UPI ID (syncUserProfile)", async () => {
         await assertSucceeds(
-            updateDoc(doc(as(env, BOB), "users", BOB), { upiId: "bob@ybl", email: deleteField() })
+            updateDoc(doc(as(env, BOB), "users", BOB), {
+                email: deleteField(),
+                upiId: deleteField(),
+            })
         );
     });
 
-    it("saves a UPI ID on a profile with no email to strip", async () => {
-        await assertSucceeds(
-            updateDoc(doc(as(env, ALICE), "users", ALICE), { upiId: "alice@ybl", email: deleteField() })
-        );
+    it("refuses an update that leaves a retired field in place", async () => {
+        await assertFails(updateDoc(doc(as(env, BOB), "users", BOB), { email: deleteField() }));
+        await assertFails(updateDoc(doc(as(env, BOB), "users", BOB), { upiId: deleteField() }));
+        await assertFails(updateDoc(doc(as(env, BOB), "users", BOB), { name: "Robert" }));
     });
 
-    it("refuses any update that leaves an old email in place", async () => {
-        await assertFails(updateDoc(doc(as(env, BOB), "users", BOB), { upiId: "bob@ybl" }));
-    });
-
-    it("refuses putting an email back", async () => {
+    it("refuses putting an email or UPI ID back", async () => {
         await assertFails(updateDoc(doc(as(env, ALICE), "users", ALICE), { email: "a@example.com" }));
+        await assertFails(updateDoc(doc(as(env, ALICE), "users", ALICE), { upiId: "alice@ybl" }));
+    });
+
+    it("lets you change your own name or photo", async () => {
+        await assertSucceeds(
+            updateDoc(doc(as(env, ALICE), "users", ALICE), { name: "Alice P", photoURL: "x" })
+        );
     });
 
     it("refuses unknown fields", async () => {
@@ -117,7 +120,9 @@ describe("updating a profile", () => {
     });
 
     it("refuses editing someone else's profile", async () => {
-        await assertFails(updateDoc(doc(as(env, ALICE), "users", BOB), { email: deleteField() }));
+        await assertFails(
+            updateDoc(doc(as(env, ALICE), "users", BOB), { email: deleteField(), upiId: deleteField() })
+        );
     });
 
     it("never allows deleting a profile", async () => {

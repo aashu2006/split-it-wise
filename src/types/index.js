@@ -17,7 +17,6 @@
  * @property {string} uid
  * @property {string} name
  * @property {string} [photoURL]
- * @property {string} [upiId] e.g. "akshat@okhdfcbank", used to build UPI payment links
  * @property {Timestamp} createdAt
  */
 

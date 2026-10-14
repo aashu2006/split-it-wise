@@ -1,11 +1,12 @@
 /**
- * One-off: remove the email field from every profile in /users.
+ * One-off: remove fields profiles no longer store from every doc in /users.
  *
- * Profiles are readable by any signed-in user, and older ones were written
- * with the owner's email in them. The app now strips it when its owner next
- * signs in (syncUserProfile in src/lib/user.js), but someone who never comes
- * back would keep theirs forever, and rules can't hide one field of a readable
- * document. This clears the rest in one pass.
+ * Profiles are readable by any signed-in user. Older ones carry the owner's
+ * email, and a UPI ID from the payment links the app has since dropped (often
+ * a phone number in disguise: 98xxxxxxxx@ybl). The app strips both when the
+ * owner next signs in (syncUserProfile in src/lib/user.js), but someone who
+ * never comes back would keep theirs forever, and rules can't hide one field
+ * of a readable document. This clears the rest in one pass.
  *
  * It needs admin access, so it runs on your machine with a service-account key
  * and bypasses the security rules entirely. Get a key from the Firebase console:
@@ -13,18 +14,21 @@
  * outside the repo, and delete it when you're done.
  *
  *   # Dry run: reports what it would change, writes nothing
- *   GOOGLE_APPLICATION_CREDENTIALS=~/keys/split-it-wise.json node scripts/strip-user-emails.mjs
+ *   GOOGLE_APPLICATION_CREDENTIALS=~/keys/split-it-wise.json node scripts/strip-retired-profile-fields.mjs
  *
  *   # Actually remove the emails
- *   GOOGLE_APPLICATION_CREDENTIALS=~/keys/split-it-wise.json node scripts/strip-user-emails.mjs --apply
+ *   GOOGLE_APPLICATION_CREDENTIALS=~/keys/split-it-wise.json node scripts/strip-retired-profile-fields.mjs --apply
  *
- * Safe to run more than once: profiles without an email are left alone.
+ * Safe to run more than once: profiles with nothing to remove are left alone.
  */
 import { readFileSync } from "node:fs";
 import { initializeApp, applicationDefault } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 
 const apply = process.argv.includes("--apply");
+
+/** Keep in step with RETIRED_PROFILE_FIELDS in src/lib/user.js. */
+const RETIRED_FIELDS = ["email", "upiId"];
 
 // Against the emulator (FIRESTORE_EMULATOR_HOST set) no key is needed, which
 // is how this script was tested.
@@ -49,13 +53,21 @@ initializeApp(emulator ? { projectId } : { credential: applicationDefault(), pro
 const db = getFirestore();
 
 const users = await db.collection("users").get();
-const withEmail = users.docs.filter((profile) => "email" in profile.data());
+const stale = users.docs
+    .map((profile) => ({
+        ref: profile.ref,
+        fields: RETIRED_FIELDS.filter((field) => field in profile.data()),
+    }))
+    .filter((profile) => profile.fields.length > 0);
 
 console.log(`Project:    ${projectId}${emulator ? ` (emulator at ${emulator})` : ""}`);
 console.log(`Profiles:   ${users.size}`);
-console.log(`With email: ${withEmail.length}`);
+for (const field of RETIRED_FIELDS) {
+    const count = stale.filter((profile) => profile.fields.includes(field)).length;
+    console.log(`With ${field}:`.padEnd(12) + count);
+}
 
-if (withEmail.length === 0) {
+if (stale.length === 0) {
     console.log("Nothing to do.");
     process.exit(0);
 }
@@ -75,12 +87,15 @@ writer.onWriteError((error) => {
     return false;
 });
 
-for (const profile of withEmail) {
-    writer.update(profile.ref, { email: FieldValue.delete() });
+for (const profile of stale) {
+    writer.update(
+        profile.ref,
+        Object.fromEntries(profile.fields.map((field) => [field, FieldValue.delete()]))
+    );
 }
 await writer.close();
 
-console.log(`\nRemoved the email from ${withEmail.length - failed} profile(s).`);
+console.log(`\nCleaned ${stale.length - failed} profile(s).`);
 if (failed > 0) {
     console.log(`${failed} failed; re-running is safe and will retry just those.`);
     process.exit(1);

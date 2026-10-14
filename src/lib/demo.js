@@ -42,19 +42,15 @@ const seed = () => {
             uid: YOU,
             name: "Aarav Shah",
             photoURL: "",
-            upiId: "aarav@okhdfcbank",
             createdAt: minutesAgo(60_000),
         },
         {
             uid: PRIYA,
             name: "Priya Nair",
             photoURL: "",
-            upiId: "priya@ybl",
             createdAt: minutesAgo(50_000),
         },
         {
-            // Deliberately no upiId, so the "hasn't added a UPI ID yet" branch
-            // in SettleUpModal is reachable without editing anything.
             uid: RAHUL,
             name: "Rahul Verma",
             photoURL: "",
@@ -64,7 +60,6 @@ const seed = () => {
             uid: SANA,
             name: "Sana Khan",
             photoURL: "",
-            upiId: "sana@okaxis",
             createdAt: minutesAgo(30_000),
         },
     ];
@@ -201,12 +196,6 @@ export const demoGetUserById = async (userId) => {
 
 export const demoGetUsersByIds = async (userIds) =>
     store.users.filter((u) => userIds.includes(u.uid)).map(detach);
-
-export const demoSaveUpiId = async (userId, upiId) => {
-    const user = store.users.find((u) => u.uid === userId);
-    if (user) user.upiId = upiId;
-    notify();
-};
 
 // --------------------------------------------------------------- groups
 

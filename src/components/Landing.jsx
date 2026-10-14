@@ -125,8 +125,8 @@ export default function Landing({ onSignIn, isFirebaseConfigured = true }) {
                         </h1>
 
                         <p className="animate-in fade-in slide-in-from-bottom-4 duration-700 mt-6 max-w-xl text-lg text-muted-foreground">
-                            Split bills with friends, settle up over UPI, and stop doing
-                            mental maths at the end of every trip.
+                            Split bills with friends, see exactly who pays whom, and stop
+                            doing mental maths at the end of every trip.
                         </p>
 
                         <div className="animate-in fade-in slide-in-from-bottom-5 duration-1000 mt-9 flex flex-wrap items-center gap-x-6 gap-y-4">
@@ -280,7 +280,7 @@ export default function Landing({ onSignIn, isFirebaseConfigured = true }) {
                                     </span>
                                 </span>
                                 <span className="whitespace-nowrap rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white">
-                                    Pay via UPI
+                                    Mark paid
                                 </span>
                             </div>
                         </div>
@@ -290,7 +290,7 @@ export default function Landing({ onSignIn, isFirebaseConfigured = true }) {
                                 settling up
                             </p>
                             <h2 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">
-                                One tap to GPay
+                                Fewest payments, no maths
                             </h2>
                             <p className="mt-5 text-muted-foreground">
                                 Balances alone just tell you who&apos;s up and who&apos;s
@@ -298,8 +298,8 @@ export default function Landing({ onSignIn, isFirebaseConfigured = true }) {
                                 five never needs more than four of them.
                             </p>
                             <p className="mt-4 text-muted-foreground">
-                                Add your UPI ID once and everyone gets a link that opens
-                                GPay, PhonePe or Paytm with the amount already filled in.
+                                Pay however you usually do, then mark it paid and everyone&apos;s
+                                balance updates on the spot. Part payments and undo included.
                             </p>
                         </div>
                     </div>

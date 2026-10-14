@@ -14,7 +14,6 @@ import {
     demoGetUserGroups,
     demoGetUsersByIds,
     demoRemoveMember,
-    demoSaveUpiId,
     demoUpdateExpense,
     demoUpdateGroupName,
     demoWatchGroup,
@@ -74,13 +73,6 @@ describe("seeded fixtures", () => {
         expect(new Set(all.map((e) => e.splitType))).toEqual(
             new Set(["equal", "exact", "percentage"])
         );
-    });
-
-    it("leaves one member without a UPI ID", async () => {
-        // Otherwise SettleUpModal's "hasn't added a UPI ID yet" branch can
-        // never be seen.
-        const users = await demoGetUsersByIds(["demo-aarav", "demo-priya", "demo-rahul"]);
-        expect(users.some((u) => !u.upiId)).toBe(true);
     });
 });
 
@@ -172,12 +164,6 @@ describe("mutations", () => {
         const group = await demoGetGroup(HOSTEL);
         expect(group.name).toBe("Room 202");
         expect(group.members).not.toContain("demo-rahul");
-    });
-
-    it("saves a UPI ID", async () => {
-        await demoSaveUpiId("demo-rahul", "rahul@okicici");
-        const [rahul] = await demoGetUsersByIds(["demo-rahul"]);
-        expect(rahul.upiId).toBe("rahul@okicici");
     });
 
     // Handing out the stored object would let a component mutate the store by
