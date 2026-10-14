@@ -22,7 +22,7 @@ const eslintConfig = defineConfig([
             "react-hooks/set-state-in-effect": "warn",
         },
     },
-    globalIgnores([".next/**", "out/**", "build/**"]),
+    globalIgnores([".next/**", ".next-e2e/**", "out/**", "build/**", "test-results/**", "playwright-report/**"]),
 ]);
 
 export default eslintConfig;
