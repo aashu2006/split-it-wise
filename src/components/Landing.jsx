@@ -93,8 +93,8 @@ export default function Landing({ onSignIn, isFirebaseConfigured = true }) {
                     <span className="font-medium">Demo mode.</span> No Firebase config
                     found, so signing in opens a sample account with example groups and
                     expenses. Nothing is saved. See{" "}
-                    <span className="font-mono text-xs">README</span> step 6 to connect a
-                    real project.
+                    <span className="font-mono text-xs">CONTRIBUTING.md</span> to connect a
+                    Firebase project.
                 </div>
             )}
             {/* ---------- Hero ---------- */}

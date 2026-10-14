@@ -1,0 +1,7 @@
+# Every change is reviewed by the maintainer.
+*                   @aashu2006
+
+# The security boundary and its tests, called out so they're never merged unseen.
+/firestore.rules    @aashu2006
+/tests/rules/       @aashu2006
+/.github/           @aashu2006

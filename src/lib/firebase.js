@@ -73,7 +73,7 @@ if (isFirebaseConfigured) {
             "  Missing from .env.local:",
             ...missingEnvVars.map((name) => `    ${name}`),
             "",
-            "  Copy .env.example to .env.local and fill it in. See README step 6.",
+            "  Copy .env.example to .env.local and fill it in. See CONTRIBUTING.md.",
             "",
         ].join("\n")
     );

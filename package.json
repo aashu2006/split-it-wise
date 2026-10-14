@@ -1,7 +1,17 @@
 {
-  "name": "split_it_wise",
+  "name": "split-it-wise",
   "version": "0.1.0",
   "private": true,
+  "description": "Split bills with friends, see who owes whom, and settle up over UPI.",
+  "homepage": "https://split-it-wise.vercel.app",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aashu2006/split-it-wise.git"
+  },
+  "bugs": {
+    "url": "https://github.com/aashu2006/split-it-wise/issues"
+  },
+  "author": "Akshat Patil (https://github.com/aashu2006)",
   "license": "MIT",
   "engines": {
     "node": ">=20.19.0"
