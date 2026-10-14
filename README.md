@@ -74,7 +74,7 @@ Found a vulnerability? Please report it privately; see [SECURITY.md](SECURITY.md
 | Framework | [Next.js 16](https://nextjs.org) (App Router), React 19 |
 | UI | Tailwind CSS v4, shadcn/ui |
 | Auth & data | Firebase Authentication (Google), Cloud Firestore |
-| Testing | Vitest, Firebase emulator for the security rules |
+| Testing | Vitest, Playwright end-to-end, Firebase emulator for the security rules |
 | Hosting | Vercel |
 
 ## Contributing

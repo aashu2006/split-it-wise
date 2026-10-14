@@ -22,7 +22,8 @@
     "start": "next start",
     "lint": "eslint .",
     "test": "vitest run",
-    "test:rules": "npx -y firebase-tools@15.33.0 emulators:exec --only firestore --project demo-split-it-wise \"vitest run --config vitest.rules.config.mjs\""
+    "test:rules": "npx -y firebase-tools@15.33.0 emulators:exec --only firestore --project demo-split-it-wise \"vitest run --config vitest.rules.config.mjs\"",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",
@@ -39,6 +40,7 @@
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.2",
+    "@playwright/test": "^1.64.1",
     "@tailwindcss/postcss": "^4",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.3.2",

@@ -16,6 +16,7 @@
 
 - [ ] Targets `develop`
 - [ ] `npm run lint`, `npm test` and `npm run build` pass
+- [ ] Changed the UI? `npm run test:e2e` passes, and specs are updated if behaviour changed
 - [ ] Changed `firestore.rules`? Added a test in `tests/rules/` that fails without the change
 - [ ] Changed `calculations.js`? Added a unit test
 - [ ] Added a read or write in `src/lib/`? Gave it a demo-mode counterpart in `demo.js`

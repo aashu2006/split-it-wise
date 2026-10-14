@@ -84,7 +84,7 @@ export default function ExpenseList({
 
     return (
         <>
-            <div className="space-y-3">
+            <ul className="space-y-3" aria-label="Expenses">
                 {expenses.map((expense) => {
                     const payer = userMap.get(expense.paidBy);
                     const splitLabel =
@@ -105,7 +105,7 @@ export default function ExpenseList({
                         : `₹${(expense.amount / members.length).toFixed(2)} per person`;
 
                     return (
-                        <div
+                        <li
                             key={expense.id}
                             className="bg-muted rounded-lg p-4 border border-border"
                         >
@@ -149,10 +149,10 @@ export default function ExpenseList({
                                     </div>
                                 )}
                             </div>
-                        </div>
+                        </li>
                     );
                 })}
-            </div>
+            </ul>
 
             <ConfirmModal
                 isOpen={pendingDelete !== null}
