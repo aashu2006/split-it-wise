@@ -30,7 +30,9 @@ open source, this is a friendly place to start.
   - **Equal**: pick who's included, the app divides it up
   - **Exact**: type what each person owes
   - **Percentage**: type each person's share as a %
-- Delete an expense (creator or admin)
+- Edit or delete an expense (creator or admin). An expense that involves someone who
+  has since left can't be edited, only deleted, so their share is never silently dropped
+- Changes show up live on everyone's screen, no reload needed
 
 ### Balances
 - Per-person balance: **"Is owed ₹X"** or **"Owes ₹X"**, colour-coded green and red
@@ -52,6 +54,8 @@ open source, this is a friendly place to start.
 ### Security
 - Firestore security rules enforce every permission server-side: group membership,
   admin-only actions, and expense ownership
+- Profiles hold only what other members need to see (name, photo, UPI ID). Your email
+  stays with Google sign-in and is never stored where others can read it
 
 ---
 
@@ -210,10 +214,15 @@ src/
 ├── lib/                    All Firestore access + business logic
 │   ├── firebase.js         SDK setup
 │   ├── groups.js           Create, join, rename, remove members, delete
-│   ├── expenses.js         Add, fetch, delete expenses
-│   ├── user.js             Profile lookups
-│   └── calculations.js     Splitting + balance maths
+│   ├── expenses.js         Add, edit, delete, and listen to expenses
+│   ├── settlements.js      Record and undo repayments
+│   ├── user.js             Profiles and UPI IDs
+│   ├── calculations.js     Splitting, balances, debt simplification
+│   ├── upi.js              upi:// payment links
+│   └── demo.js             In-memory stand-in for Firestore (demo mode)
 └── types/                  Shared data shapes, as JSDoc typedefs
+
+scripts/                    One-off admin scripts, run by hand with a service-account key
 
 firestore.rules             Server-side permissions, the real security
 firestore.indexes.json      Composite indexes
@@ -221,6 +230,8 @@ firestore.indexes.json      Composite indexes
 
 Rules of thumb:
 - Firestore calls belong in `src/lib/`, not in components
+- Reads are live listeners (`subscribeTo...` in `src/lib/`), so after a write there's
+  nothing to refresh: the listener reports it, including your own changes
 - Components stay presentational and take props
 - Any change to permissions needs a matching change in `firestore.rules`
 
@@ -233,7 +244,8 @@ npm test
 ```
 
 Covers the splitting and balance maths in `src/lib/calculations.test.js`, the part where
-a bug costs people real money. **If you touch `calculations.js`, add a test.**
+a bug costs people real money, plus demo mode and its live listeners in
+`src/lib/demo.test.js`. **If you touch `calculations.js`, add a test.**
 
 There's no compiler to catch mistakes here, so the linter, the tests and a build are the
 whole safety net. Worth running before you open a PR:
@@ -243,8 +255,8 @@ npm run lint        # ESLint: unused vars, hook deps, Next.js rules
 npm run build       # production build
 ```
 
-The linter currently reports a handful of warnings, all pre-existing and all tracked in
-the roadmap above. Keep it at zero *errors*.
+The linter currently reports one warning, the `<img>` avatar tracked in the roadmap
+below. Keep it at zero *errors*.
 
 ---
 
@@ -255,28 +267,21 @@ duplicate work.
 
 **Most wanted**
 
-- [ ] **Edit an expense**, since currently you can only add and delete. A typo'd amount
-      means deleting the expense and re-entering it.
-- [ ] **Real-time updates.** The app refetches after every change instead of using
-      Firestore `onSnapshot` listeners, so a second device won't see a new expense until
-      it reloads. This is also what the `react-hooks/set-state-in-effect` lint warnings
-      are pointing at — the fetch-then-setState effects go away once the data arrives as
-      a subscription.
+- [ ] **Security rules tests.** `firestore.rules` is the real security boundary, but it's
+      only been tested by hand against the emulator. A suite using
+      `@firebase/rules-unit-testing` that runs in CI would catch a loosened rule.
+- [ ] **Component tests.** Only the maths and demo mode are covered today.
 
 **Nice to have**
 
 - [ ] Expense categories and filtering
 - [ ] Export a group's history to CSV
 - [ ] Multiple currencies (INR is hardcoded)
-- [ ] Dark mode
 
 **Housekeeping**
 
-- [ ] Component tests, only the maths is covered today
 - [ ] Swap the `<img>` avatar in `MembersList` for `next/image` (needs a
       `remotePatterns` entry for `googleusercontent.com`)
-- [ ] Member emails are fetched to every group member's browser (needed by the current
-      user lookup). Splitting public profile fields from private ones would fix it.
 - [ ] One-time cleanup of expenses orphaned by groups deleted before cascade delete existed
 
 ---
