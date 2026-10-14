@@ -145,9 +145,33 @@ const seed = () => {
 
 let store = seed();
 
+/**
+ * Callbacks registered by the demoWatch* functions. Every write calls notify(),
+ * and each watcher re-reads its slice of the store, which is roughly what an
+ * onSnapshot listener does against Firestore.
+ */
+const watchers = new Set();
+
+const notify = () => watchers.forEach((watcher) => watcher());
+
+const watch = (read, onChange) => {
+    let active = true;
+    const watcher = () =>
+        read().then((value) => {
+            if (active) onChange(value);
+        });
+    watchers.add(watcher);
+    watcher();
+    return () => {
+        active = false;
+        watchers.delete(watcher);
+    };
+};
+
 /** Restore the seed. Exposed for tests. */
 export const resetDemoStore = () => {
     store = seed();
+    notify();
 };
 
 const newId = (prefix) =>
@@ -185,6 +209,7 @@ export const demoGetUsersByIds = async (userIds) =>
 export const demoSaveUpiId = async (userId, upiId) => {
     const user = store.users.find((u) => u.uid === userId);
     if (user) user.upiId = upiId;
+    notify();
 };
 
 // --------------------------------------------------------------- groups
@@ -192,10 +217,16 @@ export const demoSaveUpiId = async (userId, upiId) => {
 export const demoGetUserGroups = async (userId) =>
     store.groups.filter((g) => g.members.includes(userId)).map(detach);
 
+export const demoWatchUserGroups = (userId, onChange) =>
+    watch(() => demoGetUserGroups(userId), onChange);
+
 export const demoGetGroup = async (groupId) => {
     const group = store.groups.find((g) => g.id === groupId);
     return group ? detach(group) : null;
 };
+
+export const demoWatchGroup = (groupId, onChange) =>
+    watch(() => demoGetGroup(groupId), onChange);
 
 export const demoCreateGroup = async (name, adminId) => {
     const id = newId("demo-group");
@@ -208,6 +239,7 @@ export const demoCreateGroup = async (name, adminId) => {
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
     });
+    notify();
     return id;
 };
 
@@ -216,6 +248,7 @@ const mutateGroup = (groupId, change) => {
     if (!group) return;
     change(group);
     group.updatedAt = Timestamp.now();
+    notify();
 };
 
 export const demoAddMemberToGroup = async (groupId, userId) =>
@@ -242,6 +275,7 @@ export const demoDeleteGroup = async (groupId) => {
     store.groups = store.groups.filter((g) => g.id !== groupId);
     store.expenses = store.expenses.filter((e) => e.groupId !== groupId);
     store.settlements = store.settlements.filter((s) => s.groupId !== groupId);
+    notify();
 };
 
 // ------------------------------------------------------------- expenses
@@ -249,9 +283,13 @@ export const demoDeleteGroup = async (groupId) => {
 export const demoGetGroupExpenses = async (groupId) =>
     newestFirst(store.expenses.filter((e) => e.groupId === groupId)).map(detach);
 
+export const demoWatchGroupExpenses = (groupId, onChange) =>
+    watch(() => demoGetGroupExpenses(groupId), onChange);
+
 export const demoAddExpense = async (expense) => {
     const id = newId("demo-exp");
     store.expenses.push({ ...expense, id, createdAt: Timestamp.now() });
+    notify();
     return id;
 };
 
@@ -262,6 +300,7 @@ export const demoGetExpense = async (expenseId) => {
 
 export const demoDeleteExpense = async (expenseId) => {
     store.expenses = store.expenses.filter((e) => e.id !== expenseId);
+    notify();
 };
 
 // ---------------------------------------------------------- settlements
@@ -269,9 +308,13 @@ export const demoDeleteExpense = async (expenseId) => {
 export const demoGetGroupSettlements = async (groupId) =>
     newestFirst(store.settlements.filter((s) => s.groupId === groupId)).map(detach);
 
+export const demoWatchGroupSettlements = (groupId, onChange) =>
+    watch(() => demoGetGroupSettlements(groupId), onChange);
+
 export const demoAddSettlement = async (settlement) => {
     const id = newId("demo-settle");
     store.settlements.push({ ...settlement, id, createdAt: Timestamp.now() });
+    notify();
     return id;
 };
 
@@ -282,4 +325,5 @@ export const demoGetSettlement = async (settlementId) => {
 
 export const demoDeleteSettlement = async (settlementId) => {
     store.settlements = store.settlements.filter((s) => s.id !== settlementId);
+    notify();
 };

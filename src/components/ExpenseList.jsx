@@ -12,8 +12,6 @@ import { useState } from "react";
  * @param {string} props.currentUserId
  * @param {string} props.groupId
  * @param {boolean} props.isAdmin
- * @param {(expenseId: string) => void} props.onExpenseDeleted
- *   Passed the id so the caller can drop it from its list without refetching.
  */
 export default function ExpenseList({
     expenses,
@@ -21,7 +19,6 @@ export default function ExpenseList({
     currentUserId,
     groupId,
     isAdmin,
-    onExpenseDeleted,
 }) {
     const [deleting, setDeleting] = useState(null);
     const [pendingDelete, setPendingDelete] = useState(null);
@@ -46,7 +43,6 @@ export default function ExpenseList({
 
         try {
             await deleteExpense(expense.id, groupId, currentUserId);
-            onExpenseDeleted(expense.id);
         } catch (error) {
             showToast(error.message || "Failed to delete expense");
         } finally {

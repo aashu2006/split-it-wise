@@ -2,43 +2,47 @@
 
 import { useAuth } from "@/context/AuthContext";
 import { useEffect, useState } from "react";
-import { getUserGroups } from "@/lib/groups";
+import { subscribeToUserGroups } from "@/lib/groups";
 import GroupCard from "@/components/GroupCard";
 import CreateGroupModal from "@/components/CreateGroupModal";
 import ThemeToggle from "@/components/ThemeToggle";
 import Landing from "@/components/Landing";
-import { useRouter } from "next/navigation";
 
 export default function Home() {
   const { user, loading, signInWithGoogle, logout, isFirebaseConfigured } = useAuth();
-  const router = useRouter();
-  const [groups, setGroups] = useState([]);
-  const [loadingGroups, setLoadingGroups] = useState(true);
+  const uid = user?.uid;
+  // Tagged with the uid it was loaded for, so signing out and in as someone
+  // else never shows the previous account's groups while the new list loads.
+  const [loaded, setLoaded] = useState(null);
   const [groupsError, setGroupsError] = useState("");
+  // Bumped by "Try again" to tear down a failed listener and open a new one.
+  const [attempt, setAttempt] = useState(0);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  const loadGroups = async () => {
-    if (!user) return;
-    setLoadingGroups(true);
-    setGroupsError("");
-    try {
-      const userGroups = await getUserGroups(user.uid);
-      setGroups(userGroups);
-    } catch (error) {
-      console.error("Error loading groups:", error);
-      // Said out loud rather than only in the console: an empty page with no
-      // explanation reads as "you have no groups", which is a different thing.
-      setGroupsError("Couldn't load your groups. Check your connection and try again.");
-    } finally {
-      setLoadingGroups(false);
-    }
-  };
-
   useEffect(() => {
-    if (user) {
-      loadGroups();
-    }
-  }, [user]);
+    if (!uid) return;
+    return subscribeToUserGroups(
+      uid,
+      (groups) => {
+        setGroupsError("");
+        setLoaded({ uid, groups });
+      },
+      (error) => {
+        console.error("Error loading groups:", error);
+        // Said out loud rather than only in the console: an empty page with no
+        // explanation reads as "you have no groups", which is a different thing.
+        setGroupsError("Couldn't load your groups. Check your connection and try again.");
+      }
+    );
+  }, [uid, attempt]);
+
+  const groups = uid && loaded?.uid === uid ? loaded.groups : null;
+  const loadingGroups = !groups && !groupsError;
+
+  const retry = () => {
+    setGroupsError("");
+    setAttempt((current) => current + 1);
+  };
 
   if (loading) {
     return (
@@ -101,7 +105,7 @@ export default function Home() {
           <div className="text-center py-12">
             <p className="text-red-600 dark:text-red-400 mb-4">{groupsError}</p>
             <button
-              onClick={loadGroups}
+              onClick={retry}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
             >
               Try again
@@ -137,7 +141,6 @@ export default function Home() {
       <CreateGroupModal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        onGroupCreated={loadGroups}
       />
     </div>
   );

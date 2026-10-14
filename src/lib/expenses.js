@@ -5,6 +5,7 @@ import {
     getDoc,
     getDocs,
     deleteDoc,
+    onSnapshot,
     query,
     where,
     orderBy,
@@ -18,6 +19,7 @@ import {
     demoDeleteExpense,
     demoGetExpense,
     demoGetGroupExpenses,
+    demoWatchGroupExpenses,
 } from "./demo";
 
 /**
@@ -86,6 +88,41 @@ export const getGroupExpenses = async (groupId) => {
         id: doc.id,
         ...doc.data(),
     }));
+};
+
+/**
+ * Listen to a group's expenses, newest first
+ *
+ * Fires once with the current list and again on every change, from this device
+ * or any other. A write made here is reported straight away, before the server
+ * acknowledges it; its createdAt is then the SDK's local estimate of the
+ * serverTimestamp(), so it still sorts and displays correctly.
+ *
+ * @param {string} groupId - Group ID
+ * @param {(expenses: import("@/types").Expense[]) => void} onChange
+ * @param {(error: Error) => void} onError
+ * @returns {() => void} Unsubscribe
+ */
+export const subscribeToGroupExpenses = (groupId, onChange, onError) => {
+    if (isDemoMode) return demoWatchGroupExpenses(groupId, onChange);
+
+    const q = query(
+        collection(db, "expenses"),
+        where("groupId", "==", groupId),
+        orderBy("createdAt", "desc")
+    );
+
+    return onSnapshot(
+        q,
+        (snapshot) =>
+            onChange(
+                snapshot.docs.map((expense) => ({
+                    id: expense.id,
+                    ...expense.data({ serverTimestamps: "estimate" }),
+                }))
+            ),
+        onError
+    );
 };
 
 /**

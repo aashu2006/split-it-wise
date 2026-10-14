@@ -15,9 +15,8 @@ import {
  * @param {Object} props
  * @param {boolean} props.isOpen
  * @param {() => void} props.onClose
- * @param {() => void} props.onGroupCreated
  */
-export default function CreateGroupModal({ isOpen, onClose, onGroupCreated }) {
+export default function CreateGroupModal({ isOpen, onClose }) {
     const { user } = useAuth();
     const [groupName, setGroupName] = useState("");
     const [loading, setLoading] = useState(false);
@@ -37,8 +36,8 @@ export default function CreateGroupModal({ isOpen, onClose, onGroupCreated }) {
 
         try {
             await createGroup(groupName.trim(), user.uid);
+            // No refresh needed: the home page's listener picks the group up.
             setGroupName("");
-            onGroupCreated();
             onClose();
         } catch (err) {
             setError("Failed to create group. Please try again.");

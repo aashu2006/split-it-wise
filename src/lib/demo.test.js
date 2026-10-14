@@ -5,6 +5,8 @@ import {
     resetDemoStore,
     demoAddExpense,
     demoAddSettlement,
+    demoCreateGroup,
+    demoDeleteGroup,
     demoDeleteExpense,
     demoGetGroup,
     demoGetGroupExpenses,
@@ -14,6 +16,9 @@ import {
     demoRemoveMember,
     demoSaveUpiId,
     demoUpdateGroupName,
+    demoWatchGroup,
+    demoWatchGroupExpenses,
+    demoWatchUserGroups,
 } from "./demo";
 import { calculateBalancesByUid, calculateMemberBalances } from "./calculations";
 
@@ -185,5 +190,82 @@ describe("mutations", () => {
         await demoUpdateGroupName(HOSTEL, "Changed");
         resetDemoStore();
         expect((await demoGetGroup(HOSTEL)).name).toBe("Hostel Room 101");
+    });
+});
+
+// The group page and home page are built on these, so a write that forgets to
+// notify shows up as a UI that silently stops updating in demo mode.
+describe("watchers", () => {
+    /** Collects every value a watcher reports; flush() lets pending reads land. */
+    const record = () => {
+        const calls = [];
+        return { calls, onChange: (value) => calls.push(value) };
+    };
+    const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+    it("report the current value straight away", async () => {
+        const { calls, onChange } = record();
+        const unsubscribe = demoWatchGroupExpenses(HOSTEL, onChange);
+        await flush();
+
+        expect(calls).toHaveLength(1);
+        expect(calls[0]).toEqual(await demoGetGroupExpenses(HOSTEL));
+        unsubscribe();
+    });
+
+    it("report each write, newest expense first", async () => {
+        const { calls, onChange } = record();
+        const unsubscribe = demoWatchGroupExpenses(HOSTEL, onChange);
+        await flush();
+
+        const id = await demoAddExpense({
+            groupId: HOSTEL,
+            paidBy: YOU,
+            createdBy: YOU,
+            amount: 90,
+            description: "Chai",
+            splitType: "equal",
+            splits: { [YOU]: 30, "demo-priya": 30, "demo-rahul": 30 },
+        });
+        await flush();
+        expect(calls.at(-1)[0].id).toBe(id);
+
+        await demoDeleteExpense(id);
+        await flush();
+        expect(calls.at(-1).map((e) => e.id)).not.toContain(id);
+        unsubscribe();
+    });
+
+    it("report null once a group is deleted", async () => {
+        const { calls, onChange } = record();
+        const unsubscribe = demoWatchGroup(HOSTEL, onChange);
+        await flush();
+
+        await demoDeleteGroup(HOSTEL);
+        await flush();
+        expect(calls.at(-1)).toBeNull();
+        unsubscribe();
+    });
+
+    it("pick up a newly created group", async () => {
+        const { calls, onChange } = record();
+        const unsubscribe = demoWatchUserGroups(YOU, onChange);
+        await flush();
+
+        const id = await demoCreateGroup("Flat 4B", YOU);
+        await flush();
+        expect(calls.at(-1).map((g) => g.id)).toContain(id);
+        unsubscribe();
+    });
+
+    it("go quiet once unsubscribed", async () => {
+        const { calls, onChange } = record();
+        const unsubscribe = demoWatchGroup(HOSTEL, onChange);
+        await flush();
+        unsubscribe();
+
+        await demoUpdateGroupName(HOSTEL, "Room 202");
+        await flush();
+        expect(calls).toHaveLength(1);
     });
 });
