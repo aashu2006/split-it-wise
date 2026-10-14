@@ -29,6 +29,7 @@ import {
     buttonClass,
     formatRupees,
     labelClass,
+    textButtonClass,
 } from "@/components/ui/kit";
 
 /** A full-screen message for loading and errors, in the same column. */
@@ -260,7 +261,7 @@ export default function GroupDashboard() {
                     left={
                         <Link
                             href="/"
-                            className="flex min-h-11 items-center font-mono text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+                            className={`${textButtonClass()} -ml-1`}
                         >
                             ← groups
                         </Link>

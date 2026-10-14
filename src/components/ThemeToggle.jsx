@@ -2,6 +2,7 @@
 
 import { useTheme } from "next-themes";
 import { MoonIcon, SunIcon } from "lucide-react";
+import { iconButtonClass } from "@/components/ui/kit";
 
 /**
  * Light/dark switch.
@@ -20,7 +21,7 @@ export default function ThemeToggle() {
         <button
             onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
             type="button"
-            className="flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
+            className={iconButtonClass}
             aria-label="Switch between light and dark mode"
         >
             <SunIcon className="hidden h-[18px] w-[18px] dark:block" strokeWidth={1.6} />

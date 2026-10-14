@@ -13,6 +13,7 @@ import {
   AppHeader,
   buttonClass,
   formatRupees,
+  rowClass,
   timeAgo,
   Wordmark,
 } from "@/components/ui/kit";
@@ -151,7 +152,7 @@ export default function Home() {
                 <li key={group.id} className="border-t border-hairline">
                   <Link
                     href={`/group/${group.id}`}
-                    className="flex items-center justify-between gap-4 py-[18px]"
+                    className={`flex items-center justify-between gap-4 py-[18px] ${rowClass}`}
                   >
                     <span className="flex min-w-0 flex-col gap-1">
                       <span className="truncate text-base font-medium text-foreground">

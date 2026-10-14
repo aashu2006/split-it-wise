@@ -3,7 +3,7 @@
 import { deleteExpense, involvesOnlyMembers } from "@/lib/expenses";
 import { useToast } from "@/context/ToastContext";
 import ConfirmModal from "./ConfirmModal";
-import { formatRupees } from "@/components/ui/kit";
+import { formatRupees, rowClass } from "@/components/ui/kit";
 import { useState } from "react";
 
 const toDate = (timestamp) =>
@@ -133,7 +133,7 @@ export default function ExpenseList({
                                                 type="button"
                                                 onClick={() => open(expense)}
                                                 aria-label={`${expense.description}, ${formatRupees(expense.amount)}. open to edit`}
-                                                className="flex w-full items-start justify-between gap-4 py-3 transition-opacity hover:opacity-80"
+                                                className={`flex w-[calc(100%+1.5rem)] items-start justify-between gap-4 py-3 ${rowClass}`}
                                             >
                                                 {content}
                                             </button>

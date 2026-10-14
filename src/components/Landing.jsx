@@ -1,7 +1,7 @@
 "use client";
 
 import ThemeToggle from "@/components/ThemeToggle";
-import { AppHeader, GitHubLink, Wordmark } from "@/components/ui/kit";
+import { AppHeader, GitHubLink, Wordmark, buttonClass } from "@/components/ui/kit";
 
 /**
  * The signed-out landing page: one screen, one action.
@@ -78,7 +78,7 @@ export default function Landing({ onSignIn, isFirebaseConfigured = true }) {
                     <button
                         type="button"
                         onClick={onSignIn}
-                        className="flex h-12 items-center justify-between rounded-md border border-border px-4 font-mono text-sm text-foreground transition-colors hover:border-subtle"
+                        className={buttonClass()}
                     >
                         <span className="flex items-center gap-2.5">
                             <GoogleMark />

@@ -4,7 +4,7 @@ import { removeMemberFromGroup } from "@/lib/groups";
 import { useToast } from "@/context/ToastContext";
 import ConfirmModal from "./ConfirmModal";
 import { useState } from "react";
-import { formatRupees } from "@/components/ui/kit";
+import { formatRupees, textButtonClass } from "@/components/ui/kit";
 
 /**
  * @param {Object} props
@@ -101,7 +101,7 @@ export default function MembersList({
                                     type="button"
                                     onClick={() => setPendingRemoval(member)}
                                     disabled={removing === member.uid || blocked !== null}
-                                    className="h-11 shrink-0 px-1 font-mono text-[13px] text-negative transition-opacity hover:opacity-80 disabled:text-subtle disabled:opacity-60"
+                                    className={`${textButtonClass("text-negative")} shrink-0 disabled:text-subtle`}
                                 >
                                     {removing === member.uid ? "removing…" : "remove"}
                                 </button>

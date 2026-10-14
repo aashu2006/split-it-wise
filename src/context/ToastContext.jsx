@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useState } from "react";
+import { iconButtonClass } from "@/components/ui/kit";
 
 /** @typedef {"error" | "success"} ToastKind */
 
@@ -76,7 +77,7 @@ export const ToastProvider = ({ children }) => {
                         <button
                             type="button"
                             onClick={() => dismiss(toast.id)}
-                            className="flex h-11 w-11 shrink-0 items-center justify-center font-mono text-subtle transition-colors hover:text-foreground"
+                            className={`${iconButtonClass} shrink-0 font-mono`}
                             aria-label="Dismiss"
                         >
                             ×

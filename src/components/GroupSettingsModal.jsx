@@ -11,7 +11,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { buttonClass, fieldClass, labelClass, smallButtonClass } from "@/components/ui/kit";
+import { buttonClass, fieldClass, labelClass, smallButtonClass, textButtonClass } from "@/components/ui/kit";
 
 /**
  * Everything about a group that isn't money: its name, the invite link, who's
@@ -163,7 +163,7 @@ export default function GroupSettingsModal({
                             type="button"
                             onClick={handleToggleInvites}
                             disabled={togglingInvites}
-                            className="h-11 self-start font-mono text-[13px] text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+                            className={`${textButtonClass()} self-start`}
                         >
                             {invitesOpen ? "turn link off" : "turn link on"}
                         </button>

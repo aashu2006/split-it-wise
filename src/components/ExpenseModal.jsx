@@ -5,7 +5,7 @@ import ExpenseForm from "./ExpenseForm";
 import ConfirmModal from "./ConfirmModal";
 import { deleteExpense } from "@/lib/expenses";
 import { useToast } from "@/context/ToastContext";
-import { formatRupees } from "@/components/ui/kit";
+import { formatRupees, textButtonClass } from "@/components/ui/kit";
 import {
     Dialog,
     DialogContent,
@@ -84,7 +84,7 @@ export default function ExpenseModal({
                             type="button"
                             onClick={() => setConfirmingDelete(true)}
                             disabled={deleting}
-                            className="h-11 self-start font-mono text-[13px] text-negative transition-opacity hover:opacity-80 disabled:opacity-50"
+                            className={`${textButtonClass("text-negative")} self-start`}
                         >
                             {deleting ? "deleting…" : "delete expense"}
                         </button>

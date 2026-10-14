@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { addExpense, updateExpense } from "@/lib/expenses";
 import { splitEqually, splitByPercentage, percentagesFromSplits } from "@/lib/calculations";
-import { buttonClass, fieldClass, formatRupees, labelClass } from "@/components/ui/kit";
+import { buttonClass, fieldClass, formatRupees, labelClass, rowClass } from "@/components/ui/kit";
 
 /**
  * The split inputs for each tab, either blank or filled in from an expense
@@ -321,7 +321,7 @@ export default function ExpenseForm({
                             className={`h-10 rounded-sm font-mono text-[13px] transition-colors ${
                                 splitType === type
                                     ? "bg-muted text-foreground"
-                                    : "text-muted-foreground hover:text-foreground"
+                                    : "text-muted-foreground hover:bg-hover hover:text-foreground active:bg-pressed"
                             }`}
                             disabled={loading}
                         >
@@ -335,7 +335,7 @@ export default function ExpenseForm({
                         <ul className="flex flex-col">
                             {members.map((member) => (
                                 <li key={member.uid}>
-                                    <label className="flex min-h-11 cursor-pointer items-center justify-between gap-3">
+                                    <label className={`flex min-h-11 cursor-pointer items-center justify-between gap-3 ${rowClass}`}>
                                         <span className="flex items-center gap-3">
                                             <input
                                                 type="checkbox"

@@ -14,23 +14,49 @@ export const REPO_URL = "https://github.com/aashu2006/split-it-wise";
 /** Small mono caption above a section ("settle up", "balances"). */
 export const labelClass = "font-mono text-xs text-subtle";
 
+/*
+ * Hover feedback, the same everywhere: whatever is under the pointer lights
+ * up (background, border or underline), and darkens a step while pressed, so
+ * it's obvious what can be clicked before you click it. Disabled controls
+ * don't react.
+ */
+const interactive =
+    "transition-colors duration-150 disabled:pointer-events-none disabled:opacity-50";
+
 /**
  * The app's one button shape: mono text on the left, a hint (+, →) on the
  * right, a hairline border. `solid` raises it onto the muted surface for the
  * main action on a screen.
  */
 export const buttonClass = (solid = false) =>
-    `flex h-12 w-full items-center justify-between rounded-md border border-border px-4 font-mono text-sm text-foreground transition-colors hover:border-subtle disabled:opacity-50 ${
+    `flex h-12 w-full items-center justify-between rounded-md border border-border px-4 font-mono text-sm text-foreground hover:border-subtle hover:bg-hover active:bg-pressed ${interactive} ${
         solid ? "bg-muted" : "bg-transparent"
     }`;
 
 /** A compact outlined button for inline actions ("mark paid"). */
-export const smallButtonClass =
-    "h-11 shrink-0 rounded-md border border-border bg-transparent px-3.5 font-mono text-[13px] text-foreground transition-colors hover:border-subtle disabled:opacity-50";
+export const smallButtonClass = `h-11 shrink-0 rounded-md border border-border bg-transparent px-3.5 font-mono text-[13px] text-foreground hover:border-subtle hover:bg-hover active:bg-pressed ${interactive}`;
+
+/** Square, borderless buttons around an icon. */
+export const iconButtonClass = `flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-hover hover:text-foreground active:bg-pressed ${interactive}`;
+
+/**
+ * Words that act as buttons ("undo", "remove", "turn link off"): they
+ * underline and brighten under the pointer. Pass the resting colour.
+ */
+export const textButtonClass = (tone = "text-muted-foreground") =>
+    `inline-flex h-11 items-center rounded-sm px-1 font-mono text-[13px] underline-offset-4 hover:underline active:opacity-70 ${tone} ${
+        tone === "text-muted-foreground" || tone === "text-subtle" ? "hover:text-foreground" : ""
+    } ${interactive}`;
+
+/**
+ * A whole row that's one tap target (a group, an expense): the row lights up.
+ * Pulled out into the gutter so the highlight isn't flush with the text.
+ */
+export const rowClass = `-mx-3 rounded-md px-3 hover:bg-hover active:bg-pressed ${interactive}`;
 
 /** Text inputs and selects. */
 export const fieldClass =
-    "h-12 w-full rounded-md border border-border bg-transparent px-3.5 text-[15px] text-foreground placeholder:text-subtle focus:border-subtle focus:outline-none disabled:opacity-50";
+    "h-12 w-full rounded-md border border-border bg-transparent px-3.5 text-[15px] text-foreground transition-colors duration-150 placeholder:text-subtle hover:border-subtle focus:border-subtle focus:outline-none disabled:opacity-50";
 
 /** ₹1,200.00 — Indian digit grouping, always two decimals. */
 export const formatRupees = (amount) =>
@@ -49,7 +75,7 @@ export function IconButton({ label, children, className = "", ...props }) {
         <button
             type="button"
             aria-label={label}
-            className={`flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40 ${className}`}
+            className={`${iconButtonClass} ${className}`}
             {...props}
         >
             {children}
@@ -88,7 +114,7 @@ export function GitHubLink() {
             target="_blank"
             rel="noreferrer"
             aria-label="split-it-wise on GitHub"
-            className="flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
+            className={iconButtonClass}
         >
             <GitHubIcon />
         </a>
@@ -96,7 +122,7 @@ export function GitHubLink() {
 }
 
 const menuItemClass =
-    "flex h-11 cursor-pointer items-center justify-between rounded-sm px-3 font-mono text-[13px] text-foreground outline-none data-[highlighted]:bg-muted";
+    "flex h-11 cursor-pointer items-center justify-between rounded-sm px-3 font-mono text-[13px] text-foreground outline-none transition-colors data-[highlighted]:bg-hover";
 
 /**
  * The signed-in user's menu: theme, the repository, and logging out. Lives
@@ -117,9 +143,9 @@ export function AccountMenu({ name, email, onLogout }) {
                 <button
                     type="button"
                     aria-label={`Account: ${name}`}
-                    className="flex h-11 w-11 items-center justify-center rounded-md"
+                    className={`group ${iconButtonClass}`}
                 >
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full border border-border font-mono text-xs text-foreground">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full border border-border font-mono text-xs text-foreground transition-colors group-hover:border-subtle">
                         {initial}
                     </span>
                 </button>

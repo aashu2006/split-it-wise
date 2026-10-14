@@ -4,7 +4,7 @@ import { useState } from "react";
 import { deleteSettlement } from "@/lib/settlements";
 import { useToast } from "@/context/ToastContext";
 import ConfirmModal from "./ConfirmModal";
-import { formatRupees, labelClass, smallButtonClass } from "@/components/ui/kit";
+import { formatRupees, labelClass, smallButtonClass, textButtonClass } from "@/components/ui/kit";
 
 /**
  * Who pays whom to clear the group, and the payments already recorded.
@@ -104,7 +104,7 @@ export default function SettleUp({
                                         type="button"
                                         onClick={() => setPendingUndo(settlement)}
                                         disabled={deleting === settlement.id}
-                                        className="h-11 px-1 font-mono text-[13px] text-subtle transition-colors hover:text-foreground disabled:opacity-50"
+                                        className={textButtonClass("text-subtle")}
                                     >
                                         {deleting === settlement.id ? "…" : "undo"}
                                     </button>
