@@ -3,10 +3,10 @@
 import { useAuth } from "@/context/AuthContext";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { getGroup, updateGroupName, deleteGroup, setGroupJoinOpen } from "@/lib/groups";
+import { subscribeToGroup, updateGroupName, deleteGroup, setGroupJoinOpen } from "@/lib/groups";
 import { getUsersByIds } from "@/lib/user";
-import { getGroupExpenses } from "@/lib/expenses";
-import { getGroupSettlements } from "@/lib/settlements";
+import { subscribeToGroupExpenses } from "@/lib/expenses";
+import { subscribeToGroupSettlements } from "@/lib/settlements";
 import { useToast } from "@/context/ToastContext";
 import { calculateMemberBalances, calculateBalancesByUid, simplifyDebts } from "@/lib/calculations";
 import MembersList from "@/components/MembersList";
@@ -24,12 +24,13 @@ export default function GroupDashboard() {
     const params = useParams();
     const groupId = params.groupId;
 
-    const [group, setGroup] = useState(null);
-    const [expenses, setExpenses] = useState([]);
-    const [settlements, setSettlements] = useState([]);
+    // undefined until the first snapshot arrives; null means it doesn't exist.
+    const [group, setGroup] = useState(undefined);
+    // null until their listeners first report.
+    const [expenses, setExpenses] = useState(null);
+    const [settlements, setSettlements] = useState(null);
+    const [ledgerProfiles, setLedgerProfiles] = useState(null);
     const [settlingTransfer, setSettlingTransfer] = useState(null);
-    const [ledgerProfiles, setLedgerProfiles] = useState([]);
-    const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const { showToast } = useToast();
 
@@ -52,78 +53,91 @@ export default function GroupDashboard() {
     // Set only when copying failed, so the link can be selected by hand.
     const [inviteFallback, setInviteFallback] = useState(null);
 
-    const loadGroupData = async () => {
-        if (authLoading) return;
-
-        if (!user) {
-            router.push("/");
-            return;
-        }
-
-        try {
-            const groupData = await getGroup(groupId);
-            if (!groupData) {
-                setError("Group not found");
-                setLoading(false);
-                return;
-            }
-
-            // Check if user is a member
-            if (!groupData.members.includes(user.uid)) {
-                setError("You are not a member of this group");
-                setLoading(false);
-                return;
-            }
-
-            setGroup(groupData);
-            setNewGroupName(groupData.name);
-
-            // Load expenses and the repayments made against them
-            const [groupExpenses, groupSettlements] = await Promise.all([
-                getGroupExpenses(groupId),
-                getGroupSettlements(groupId),
-            ]);
-            setExpenses(groupExpenses);
-            setSettlements(groupSettlements);
-
-            // Load profiles for everyone in the ledger, not just current
-            // members — anyone removed while unsettled still has a balance.
-            const participants = new Set(groupData.members);
-            groupExpenses.forEach((expense) => {
-                participants.add(expense.paidBy);
-                Object.keys(expense.splits ?? {}).forEach((uid) => participants.add(uid));
-            });
-            groupSettlements.forEach((settlement) => {
-                participants.add(settlement.from);
-                participants.add(settlement.to);
-            });
-            setLedgerProfiles(await getUsersByIds([...participants]));
-
-            setLoading(false);
-        } catch (err) {
-            console.error("Error loading group:", err);
-            setError("Failed to load group");
-            setLoading(false);
-        }
-    };
+    const uid = user?.uid;
 
     useEffect(() => {
-        loadGroupData();
-    }, [user, authLoading, groupId, router]);
+        if (!authLoading && !uid) router.push("/");
+    }, [authLoading, uid, router]);
 
-    // Derived rather than stored, so a mutation only has to update the list it
+    // Everything below arrives through listeners rather than one-off reads, so
+    // a change made on another phone shows up here without a reload, and a
+    // change made here needs no bookkeeping: the listener reports our own
+    // writes too, before the server has even confirmed them.
+    useEffect(() => {
+        if (!uid) return;
+        return subscribeToGroup(groupId, setGroup, (err) => {
+            console.error("Error loading group:", err);
+            setError("Failed to load group");
+        });
+    }, [uid, groupId]);
+
+    const isMember = Boolean(uid && group?.members.includes(uid));
+
+    // Only opened once membership is confirmed. The rules refuse expense and
+    // settlement reads to non-members, and removing someone mid-session flips
+    // isMember, which closes these before Firestore cuts them off with an error.
+    useEffect(() => {
+        if (!isMember) return;
+        const onListenError = (err) => {
+            console.error("Error loading group:", err);
+            setError("Failed to load group");
+        };
+        const unsubscribeExpenses = subscribeToGroupExpenses(groupId, setExpenses, onListenError);
+        const unsubscribeSettlements = subscribeToGroupSettlements(
+            groupId,
+            setSettlements,
+            onListenError
+        );
+        return () => {
+            unsubscribeExpenses();
+            unsubscribeSettlements();
+        };
+    }, [isMember, groupId]);
+
+    // Everyone in the ledger, not just current members: anyone removed while
+    // unsettled still has a balance. Joined into a string so the profile fetch
+    // below reruns only when someone new appears, not on every expense.
+    const participantKey = useMemo(() => {
+        if (!group || !expenses || !settlements) return "";
+        const participants = new Set(group.members);
+        expenses.forEach((expense) => {
+            participants.add(expense.paidBy);
+            Object.keys(expense.splits ?? {}).forEach((uid) => participants.add(uid));
+        });
+        settlements.forEach((settlement) => {
+            participants.add(settlement.from);
+            participants.add(settlement.to);
+        });
+        return [...participants].sort().join(",");
+    }, [group, expenses, settlements]);
+
+    useEffect(() => {
+        if (!participantKey) return;
+        let cancelled = false;
+        getUsersByIds(participantKey.split(","))
+            .then((profiles) => {
+                if (!cancelled) setLedgerProfiles(profiles);
+            })
+            .catch((err) => {
+                console.error("Error loading members:", err);
+                if (!cancelled) setError("Failed to load group");
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [participantKey]);
+
+    // Derived rather than stored, so a change only has to arrive in the list it
     // touched: balances, transfers and the member list follow on their own.
-    // Storing them meant every delete had to refetch the whole group to stay
-    // consistent, which is why the ledger used to lag a second behind the tap.
     const members = useMemo(() => {
-        if (!group) return [];
+        if (!group || !ledgerProfiles) return [];
         const current = new Set(group.members);
         return ledgerProfiles.filter((profile) => current.has(profile.uid));
     }, [group, ledgerProfiles]);
 
     const balances = useMemo(
         () =>
-            group
+            group && expenses && settlements && ledgerProfiles
                 ? calculateMemberBalances(expenses, ledgerProfiles, group.members, settlements)
                 : [],
         [expenses, ledgerProfiles, group, settlements]
@@ -131,40 +145,18 @@ export default function GroupDashboard() {
 
     const transfers = useMemo(
         () =>
-            group
+            group && expenses && settlements
                 ? simplifyDebts(calculateBalancesByUid(expenses, group.members, settlements))
                 : [],
         [expenses, group, settlements]
     );
 
-    // Applied locally instead of refetching. The write has already been
-    // acknowledged by Firestore at this point, so the local list and the server
-    // agree; a reload would only cost a round trip to learn the same thing.
-    const handleExpenseAdded = (expense) =>
-        setExpenses((current) => [expense, ...current]);
-
-    const handleExpenseDeleted = (expenseId) =>
-        setExpenses((current) => current.filter((expense) => expense.id !== expenseId));
-
-    const handleSettled = (settlement) =>
-        setSettlements((current) => [settlement, ...current]);
-
-    const handleSettlementDeleted = (settlementId) =>
-        setSettlements((current) =>
-            current.filter((settlement) => settlement.id !== settlementId)
-        );
-
-    const handleMemberRemoved = (userId) =>
-        setGroup((current) =>
-            current
-                ? { ...current, members: current.members.filter((uid) => uid !== userId) }
-                : current
-        );
-
+    // Profiles are fetched rather than listened to, so a saved UPI ID is
+    // patched in by hand.
     const handleProfileUpdated = (upiId) =>
         setLedgerProfiles((current) =>
-            current.map((profile) =>
-                profile.uid === user?.uid ? { ...profile, upiId } : profile
+            current?.map((profile) =>
+                profile.uid === uid ? { ...profile, upiId } : profile
             )
         );
 
@@ -211,7 +203,6 @@ export default function GroupDashboard() {
         setRenaming(true);
         try {
             await updateGroupName(groupId, newGroupName.trim(), user.uid);
-            setGroup({ ...group, name: newGroupName.trim() });
             setIsRenaming(false);
         } catch (error) {
             setRenameError(error.message || "Failed to rename group");
@@ -228,7 +219,6 @@ export default function GroupDashboard() {
 
         try {
             await setGroupJoinOpen(groupId, next, user.uid);
-            setGroup({ ...group, joinOpen: next });
         } catch (error) {
             showToast(error.message || "Failed to update the invite link");
         } finally {
@@ -250,7 +240,17 @@ export default function GroupDashboard() {
         }
     };
 
-    if (authLoading || loading) {
+    const notMember = group && !isMember;
+    const loading =
+        authLoading ||
+        !uid ||
+        group === undefined ||
+        (isMember && (!expenses || !settlements || !ledgerProfiles)) ||
+        // Deleting removes the group out from under the listener before the
+        // redirect lands; without this the page flashes "Group not found".
+        (deleting && !group);
+
+    if (loading && !error) {
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <div className="text-muted-foreground">Loading...</div>
@@ -258,12 +258,14 @@ export default function GroupDashboard() {
         );
     }
 
-    if (error || !group) {
+    if (error || !group || notMember) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-background p-4">
                 <div className="text-center max-w-md">
                     <div className="text-red-600 dark:text-red-400 mb-4 text-lg font-medium">
-                        {error || "Group not found"}
+                        {notMember
+                            ? "You are not a member of this group"
+                            : error || "Group not found"}
                     </div>
                     <button
                         onClick={() => router.push("/")}
@@ -343,7 +345,10 @@ export default function GroupDashboard() {
                                     <h1 className="text-2xl font-bold text-foreground">{group.name}</h1>
                                     {isAdmin && (
                                         <button
-                                            onClick={() => setIsRenaming(true)}
+                                            onClick={() => {
+                                                setNewGroupName(group.name);
+                                                setIsRenaming(true);
+                                            }}
                                             className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
                                         >
                                             Rename
@@ -447,7 +452,6 @@ export default function GroupDashboard() {
                         groupId={groupId}
                         isAdmin={isAdmin}
                         onSettle={setSettlingTransfer}
-                        onSettlementDeleted={handleSettlementDeleted}
                     />
                 </div>
 
@@ -470,7 +474,6 @@ export default function GroupDashboard() {
                         currentUserId={user?.uid || ""}
                         groupId={groupId}
                         isAdmin={isAdmin}
-                        onExpenseDeleted={handleExpenseDeleted}
                     />
                 </div>
 
@@ -485,7 +488,6 @@ export default function GroupDashboard() {
                         adminId={group.adminId}
                         currentUserId={user?.uid || ""}
                         groupId={groupId}
-                        onMemberRemoved={handleMemberRemoved}
                         onProfileUpdated={handleProfileUpdated}
                     />
                 </div>
@@ -498,7 +500,6 @@ export default function GroupDashboard() {
                 groupId={groupId}
                 members={members}
                 currentUserId={user?.uid || ""}
-                onExpenseAdded={handleExpenseAdded}
             />
 
             {/* Settle Up Modal */}
@@ -509,7 +510,6 @@ export default function GroupDashboard() {
                 groupId={groupId}
                 groupName={group.name}
                 onClose={() => setSettlingTransfer(null)}
-                onSettled={handleSettled}
             />
 
             {/* Delete Group Confirmation Modal */}

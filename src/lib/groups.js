@@ -6,6 +6,7 @@ import {
     setDoc,
     updateDoc,
     deleteDoc,
+    onSnapshot,
     query,
     where,
     arrayUnion,
@@ -27,6 +28,8 @@ import {
     demoRemoveMember,
     demoSetGroupJoinOpen,
     demoUpdateGroupName,
+    demoWatchGroup,
+    demoWatchUserGroups,
 } from "./demo";
 
 /**
@@ -90,6 +93,58 @@ export const getGroup = async (groupId) => {
         id: snapshot.id,
         ...snapshot.data(),
     };
+};
+
+/**
+ * Listen to the groups a user belongs to
+ * @param {string} userId - User ID
+ * @param {(groups: import("@/types").Group[]) => void} onChange
+ * @param {(error: Error) => void} onError
+ * @returns {() => void} Unsubscribe
+ */
+export const subscribeToUserGroups = (userId, onChange, onError) => {
+    if (isDemoMode) return demoWatchUserGroups(userId, onChange);
+
+    const q = query(collection(db, "groups"), where("members", "array-contains", userId));
+
+    return onSnapshot(
+        q,
+        (snapshot) =>
+            onChange(
+                snapshot.docs.map((group) => ({
+                    id: group.id,
+                    ...group.data({ serverTimestamps: "estimate" }),
+                }))
+            ),
+        onError
+    );
+};
+
+/**
+ * Listen to a single group
+ *
+ * Reports null once the group is deleted, and keeps reporting after the
+ * current user is removed from it (any signed-in user may read a group by id),
+ * so callers must check membership themselves.
+ *
+ * @param {string} groupId - Group ID
+ * @param {(group: import("@/types").Group | null) => void} onChange
+ * @param {(error: Error) => void} onError
+ * @returns {() => void} Unsubscribe
+ */
+export const subscribeToGroup = (groupId, onChange, onError) => {
+    if (isDemoMode) return demoWatchGroup(groupId, onChange);
+
+    return onSnapshot(
+        doc(db, "groups", groupId),
+        (snapshot) =>
+            onChange(
+                snapshot.exists()
+                    ? { id: snapshot.id, ...snapshot.data({ serverTimestamps: "estimate" }) }
+                    : null
+            ),
+        onError
+    );
 };
 
 /**

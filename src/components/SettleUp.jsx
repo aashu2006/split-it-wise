@@ -14,8 +14,6 @@ import ConfirmModal from "./ConfirmModal";
  * @param {string} props.groupId
  * @param {boolean} props.isAdmin
  * @param {(transfer: import("@/types").Transfer) => void} props.onSettle
- * @param {(settlementId: string) => void} props.onSettlementDeleted
- *   Passed the id so the caller can drop it from its list without refetching.
  */
 export default function SettleUp({
     transfers,
@@ -25,7 +23,6 @@ export default function SettleUp({
     groupId,
     isAdmin,
     onSettle,
-    onSettlementDeleted,
 }) {
     const [deleting, setDeleting] = useState(null);
     const [pendingUndo, setPendingUndo] = useState(null);
@@ -40,7 +37,6 @@ export default function SettleUp({
 
         try {
             await deleteSettlement(settlement.id, groupId, currentUserId);
-            onSettlementDeleted(settlement.id);
         } catch (error) {
             showToast(error.message || "Failed to undo the payment");
         } finally {

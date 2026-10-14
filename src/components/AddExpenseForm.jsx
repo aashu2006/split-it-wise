@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Timestamp } from "firebase/firestore";
+import { useState } from "react";
 import { addExpense } from "@/lib/expenses";
 import { splitEqually, splitByPercentage } from "@/lib/calculations";
 
@@ -10,9 +9,9 @@ import { splitEqually, splitByPercentage } from "@/lib/calculations";
  * @param {string} props.groupId
  * @param {import("@/types").User[]} props.members
  * @param {string} props.currentUserId
- * @param {(expense: import("@/types").Expense) => void} props.onExpenseAdded
- *   Passed the expense as it was stored, so the caller can add it to its list
- *   without refetching the group.
+ * @param {() => void} props.onExpenseAdded
+ *   Called once the expense is saved. The group page's listener picks the
+ *   expense itself up, so this only needs to close whatever holds the form.
  */
 export default function AddExpenseForm({
     groupId,
@@ -42,12 +41,19 @@ export default function AddExpenseForm({
         Object.fromEntries(members.map((m) => [m.uid, ""]))
     );
 
-    // Reset split inputs when members change
-    useEffect(() => {
+    // Reset split inputs when the member list changes. Compared by uid rather
+    // than by array identity: the group page hands down a fresh array on every
+    // live update, and a rename elsewhere shouldn't wipe a half-typed split.
+    // Adjusted during render instead of in an effect, so the stale inputs are
+    // never painted.
+    const memberKey = members.map((m) => m.uid).join(",");
+    const [splitsMemberKey, setSplitsMemberKey] = useState(memberKey);
+    if (splitsMemberKey !== memberKey) {
+        setSplitsMemberKey(memberKey);
         setSelectedMembers(new Set(members.map((m) => m.uid)));
         setExactAmounts(Object.fromEntries(members.map((m) => [m.uid, ""])));
         setPercentages(Object.fromEntries(members.map((m) => [m.uid, ""])));
-    }, [members]);
+    }
 
     const toggleMember = (uid) => {
         const next = new Set(selectedMembers);
@@ -153,7 +159,7 @@ export default function AddExpenseForm({
         setLoading(true);
 
         try {
-            const expenseId = await addExpense(
+            await addExpense(
                 groupId,
                 amountNum,
                 description.trim(),
@@ -163,23 +169,6 @@ export default function AddExpenseForm({
                 splits
             );
 
-            // Built before the reset below clears the fields it reads. The
-            // amount mirrors what addExpense() actually stored, and createdAt is
-            // a local stand-in for the serverTimestamp() we can't see from here
-            // — it only drives the displayed date and the list order, and this
-            // expense sorts to the top either way.
-            const created = {
-                id: expenseId,
-                groupId,
-                amount: Number(amountNum.toFixed(2)),
-                description: description.trim(),
-                paidBy,
-                createdBy: currentUserId,
-                splitType,
-                splits,
-                createdAt: Timestamp.now(),
-            };
-
             // Reset form
             setAmount("");
             setDescription("");
@@ -188,7 +177,7 @@ export default function AddExpenseForm({
             setSelectedMembers(new Set(members.map((m) => m.uid)));
             setExactAmounts(Object.fromEntries(members.map((m) => [m.uid, ""])));
             setPercentages(Object.fromEntries(members.map((m) => [m.uid, ""])));
-            onExpenseAdded(created);
+            onExpenseAdded();
         } catch (err) {
             setError(err.message || "Failed to add expense");
         } finally {

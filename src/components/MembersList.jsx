@@ -90,8 +90,6 @@ function UpiIdField({ currentUserId, upiId, onSaved }) {
  * @param {string} props.adminId
  * @param {string} props.currentUserId
  * @param {string} props.groupId
- * @param {(userId: string) => void} props.onMemberRemoved
- *   Passed the uid so the caller can drop them locally without refetching.
  * @param {(upiId: string) => void} props.onProfileUpdated
  *   Passed the saved value so the caller can patch its own profile copy.
  */
@@ -101,7 +99,6 @@ export default function MembersList({
     adminId,
     currentUserId,
     groupId,
-    onMemberRemoved,
     onProfileUpdated,
 }) {
     const [removing, setRemoving] = useState(null);
@@ -127,7 +124,6 @@ export default function MembersList({
 
         try {
             await removeMemberFromGroup(groupId, member.uid, currentUserId);
-            onMemberRemoved(member.uid);
         } catch (error) {
             showToast(error.message || "Failed to remove member");
         } finally {

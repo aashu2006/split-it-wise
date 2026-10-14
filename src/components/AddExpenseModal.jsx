@@ -16,7 +16,6 @@ import {
  * @param {string} props.groupId
  * @param {import("@/types").User[]} props.members
  * @param {string} props.currentUserId
- * @param {(expense: import("@/types").Expense) => void} props.onExpenseAdded
  */
 export default function AddExpenseModal({
     isOpen,
@@ -24,13 +23,7 @@ export default function AddExpenseModal({
     groupId,
     members,
     currentUserId,
-    onExpenseAdded,
 }) {
-    const handleExpenseAdded = (expense) => {
-        onExpenseAdded(expense);
-        onClose();
-    };
-
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="sm:max-w-md p-6 max-h-[90vh] overflow-y-auto">
@@ -50,7 +43,7 @@ export default function AddExpenseModal({
                     groupId={groupId}
                     members={members}
                     currentUserId={currentUserId}
-                    onExpenseAdded={handleExpenseAdded}
+                    onExpenseAdded={onClose}
                 />
             </DialogContent>
         </Dialog>

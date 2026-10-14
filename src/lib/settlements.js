@@ -5,6 +5,7 @@ import {
     getDoc,
     getDocs,
     deleteDoc,
+    onSnapshot,
     query,
     where,
     orderBy,
@@ -18,6 +19,7 @@ import {
     demoDeleteSettlement,
     demoGetGroupSettlements,
     demoGetSettlement,
+    demoWatchGroupSettlements,
 } from "./demo";
 
 /**
@@ -81,6 +83,39 @@ export const getGroupSettlements = async (groupId) => {
         id: settlement.id,
         ...settlement.data(),
     }));
+};
+
+/**
+ * Listen to a group's settlements, newest first
+ *
+ * Same contract as subscribeToGroupExpenses: an immediate first call, then one
+ * per change, with local writes reported before the server confirms them.
+ *
+ * @param {string} groupId - Group ID
+ * @param {(settlements: import("@/types").Settlement[]) => void} onChange
+ * @param {(error: Error) => void} onError
+ * @returns {() => void} Unsubscribe
+ */
+export const subscribeToGroupSettlements = (groupId, onChange, onError) => {
+    if (isDemoMode) return demoWatchGroupSettlements(groupId, onChange);
+
+    const q = query(
+        collection(db, "settlements"),
+        where("groupId", "==", groupId),
+        orderBy("createdAt", "desc")
+    );
+
+    return onSnapshot(
+        q,
+        (snapshot) =>
+            onChange(
+                snapshot.docs.map((settlement) => ({
+                    id: settlement.id,
+                    ...settlement.data({ serverTimestamps: "estimate" }),
+                }))
+            ),
+        onError
+    );
 };
 
 /**
