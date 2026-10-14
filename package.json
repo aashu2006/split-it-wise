@@ -2,7 +2,7 @@
   "name": "split-it-wise",
   "version": "0.1.0",
   "private": true,
-  "description": "Split bills with friends, see who owes whom, and settle up over UPI.",
+  "description": "Split bills with friends, see who owes whom, and settle up in the fewest payments.",
   "homepage": "https://split-it-wise.vercel.app",
   "repository": {
     "type": "git",

@@ -1,21 +1,22 @@
 import { doc, getDoc, setDoc, updateDoc, deleteField, serverTimestamp } from "firebase/firestore";
-import { isValidUpiId } from "./upi";
 import { db } from "./firebase";
 import {
     isDemoMode,
     demoGetUserById,
     demoGetUsersByIds,
-    demoSaveUpiId,
 } from "./demo";
+
+/** Fields older profiles may carry that are no longer stored. */
+const RETIRED_PROFILE_FIELDS = ["email", "upiId"];
 
 /**
  * Create the signed-in user's profile, or tidy up an existing one
  *
  * Profiles are readable by every signed-in user (that's how group members see
- * each other's names), so they hold nothing private. The email address in
- * particular stays out: the only person shown it is its owner, who has it from
- * Firebase Auth already. Profiles written before this still carry one, and
- * lose it here the next time their owner signs in.
+ * each other's names), so they hold only a name and a photo. Older profiles
+ * may still carry an email, which only its owner was ever shown and Firebase
+ * Auth already has, or a UPI ID from the payment links the app no longer has.
+ * Both are removed here the next time the owner signs in.
  *
  * @param {import("firebase/auth").User} user - Firebase Auth User
  */
@@ -33,8 +34,14 @@ export const syncUserProfile = async (user) => {
             photoURL: user.photoURL || "",
             createdAt: serverTimestamp(),
         });
-    } else if ("email" in snap.data()) {
-        await updateDoc(userRef, { email: deleteField() });
+    } else {
+        const stale = RETIRED_PROFILE_FIELDS.filter((field) => field in snap.data());
+        if (stale.length > 0) {
+            await updateDoc(
+                userRef,
+                Object.fromEntries(stale.map((field) => [field, deleteField()]))
+            );
+        }
     }
 };
 
@@ -55,26 +62,6 @@ export const getUserById = async (userId) => {
     }
 
     return snapshot.data();
-};
-
-/**
- * Save the signed-in user's UPI ID so others can pay them from a settle-up link
- * @param {string} userId - User ID (must be the signed-in user; rules enforce this)
- * @param {string} upiId - UPI ID, or an empty string to remove it
- * @returns {Promise<void>}
- */
-export const saveUpiId = async (userId, upiId) => {
-    const trimmed = upiId.trim();
-    if (trimmed && !isValidUpiId(trimmed)) {
-        throw new Error("That doesn't look like a UPI ID. Example: name@okhdfcbank");
-    }
-
-    if (isDemoMode) return demoSaveUpiId(userId, trimmed);
-
-    const userRef = doc(db, "users", userId);
-    // Also drops a leftover email, should syncUserProfile not have got to it:
-    // the rules refuse any profile write that still carries one.
-    await updateDoc(userRef, { upiId: trimmed, email: deleteField() });
 };
 
 /**

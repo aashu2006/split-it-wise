@@ -160,9 +160,8 @@ src/
 │   ├── groups.js           Create, join, rename, remove members, delete
 │   ├── expenses.js         Add, edit, delete and listen to expenses
 │   ├── settlements.js      Record and undo repayments
-│   ├── user.js             Profiles and UPI IDs
+│   ├── user.js             Profiles
 │   ├── calculations.js     Splitting, balances, debt simplification
-│   ├── upi.js              upi:// payment links
 │   └── demo.js             In-memory stand-in for Firestore (demo mode)
 └── types/                  Data shapes, as JSDoc typedefs
 

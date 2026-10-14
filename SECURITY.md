@@ -1,7 +1,7 @@
 # Security Policy
 
-Split-It-Wise handles people's group expenses and UPI IDs, so security reports are
-taken seriously and are always welcome.
+Split-It-Wise handles people's group expenses and who owes whom, so security reports
+are taken seriously and are always welcome.
 
 ## Supported versions
 
@@ -40,7 +40,7 @@ This is a volunteer-run project, so there's no bug bounty.
   invite link
 - Authentication and session handling
 - Cross-site scripting, clickjacking or other client-side injection in the app
-- Leaks of personal data (emails, UPI IDs) beyond what the app is meant to show
+- Leaks of personal data (such as email addresses) beyond what the app is meant to show
 
 **Out of scope**
 - The Firebase web config (API key, project ID) being visible in the page source.
