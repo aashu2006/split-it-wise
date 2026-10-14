@@ -11,7 +11,7 @@ import { useToast } from "@/context/ToastContext";
 import { calculateMemberBalances, calculateBalancesByUid, simplifyDebts } from "@/lib/calculations";
 import MembersList from "@/components/MembersList";
 import ConfirmModal from "@/components/ConfirmModal";
-import AddExpenseModal from "@/components/AddExpenseModal";
+import ExpenseModal from "@/components/ExpenseModal";
 import ExpenseList from "@/components/ExpenseList";
 import BalanceSummary from "@/components/BalanceSummary";
 import SettleUp from "@/components/SettleUp";
@@ -44,8 +44,9 @@ export default function GroupDashboard() {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [deleting, setDeleting] = useState(false);
 
-    // Add expense modal state
+    // Expense modal state: adding a new one, or the expense being edited
     const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
+    const [editingExpense, setEditingExpense] = useState(null);
 
     // Invite link state
     const [inviteCopied, setInviteCopied] = useState(false);
@@ -474,6 +475,7 @@ export default function GroupDashboard() {
                         currentUserId={user?.uid || ""}
                         groupId={groupId}
                         isAdmin={isAdmin}
+                        onEdit={setEditingExpense}
                     />
                 </div>
 
@@ -493,13 +495,17 @@ export default function GroupDashboard() {
                 </div>
             </main>
 
-            {/* Add Expense Modal */}
-            <AddExpenseModal
-                isOpen={showAddExpenseModal}
-                onClose={() => setShowAddExpenseModal(false)}
+            {/* Add / Edit Expense Modal */}
+            <ExpenseModal
+                isOpen={showAddExpenseModal || editingExpense !== null}
+                onClose={() => {
+                    setShowAddExpenseModal(false);
+                    setEditingExpense(null);
+                }}
                 groupId={groupId}
                 members={members}
                 currentUserId={user?.uid || ""}
+                expense={editingExpense}
             />
 
             {/* Settle Up Modal */}

@@ -1,45 +1,83 @@
 "use client";
 
 import { useState } from "react";
-import { addExpense } from "@/lib/expenses";
-import { splitEqually, splitByPercentage } from "@/lib/calculations";
+import { addExpense, updateExpense } from "@/lib/expenses";
+import { splitEqually, splitByPercentage, percentagesFromSplits } from "@/lib/calculations";
+
+/**
+ * The split inputs for each tab, either blank or filled in from an expense
+ * being edited. Every tab is filled, not just the expense's own, so switching
+ * tabs mid-edit starts from something sensible rather than from nothing.
+ *
+ * @param {import("@/types").Expense | null} expense
+ * @param {import("@/types").User[]} members
+ */
+const initialSplitInputs = (expense, members) => {
+    const uids = members.map((m) => m.uid);
+    const blank = Object.fromEntries(uids.map((uid) => [uid, ""]));
+    const asInputs = (values) =>
+        Object.fromEntries(Object.entries(values).map(([uid, value]) => [uid, String(value)]));
+
+    if (!expense) {
+        return { selectedMembers: new Set(uids), exactAmounts: blank, percentages: blank };
+    }
+
+    // Expenses from before splits were stored have none, and were divided
+    // equally between everyone; that's also what selecting all members means.
+    const splits = expense.splits ?? {};
+    const hasSplits = Object.keys(splits).length > 0;
+
+    return {
+        selectedMembers: new Set(
+            hasSplits && expense.splitType === "equal" ? Object.keys(splits) : uids
+        ),
+        exactAmounts: { ...blank, ...asInputs(hasSplits ? splits : splitEqually(expense.amount, uids)) },
+        percentages: {
+            ...blank,
+            ...asInputs(
+                expense.percentages ??
+                    percentagesFromSplits(expense.amount, hasSplits ? splits : splitEqually(expense.amount, uids))
+            ),
+        },
+    };
+};
 
 /**
  * @param {Object} props
  * @param {string} props.groupId
  * @param {import("@/types").User[]} props.members
  * @param {string} props.currentUserId
- * @param {() => void} props.onExpenseAdded
+ * @param {import("@/types").Expense | null} [props.expense]
+ *   The expense to edit. Without one, the form adds a new expense.
+ * @param {() => void} props.onSaved
  *   Called once the expense is saved. The group page's listener picks the
  *   expense itself up, so this only needs to close whatever holds the form.
  */
-export default function AddExpenseForm({
+export default function ExpenseForm({
     groupId,
     members,
     currentUserId,
-    onExpenseAdded,
+    expense = null,
+    onSaved,
 }) {
-    const [amount, setAmount] = useState("");
-    const [description, setDescription] = useState("");
-    const [paidBy, setPaidBy] = useState(currentUserId);
-    const [splitType, setSplitType] = useState("equal");
+    const isEditing = expense !== null;
+    const [amount, setAmount] = useState(isEditing ? String(expense.amount) : "");
+    const [description, setDescription] = useState(expense?.description ?? "");
+    const [paidBy, setPaidBy] = useState(expense?.paidBy ?? currentUserId);
+    const [splitType, setSplitType] = useState(expense?.splitType ?? "equal");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
+    const [initialInputs] = useState(() => initialSplitInputs(expense, members));
+
     // Equal split: which members are included
-    const [selectedMembers, setSelectedMembers] = useState(
-        new Set(members.map((m) => m.uid))
-    );
+    const [selectedMembers, setSelectedMembers] = useState(initialInputs.selectedMembers);
 
     // Exact split: amount per member
-    const [exactAmounts, setExactAmounts] = useState(
-        Object.fromEntries(members.map((m) => [m.uid, ""]))
-    );
+    const [exactAmounts, setExactAmounts] = useState(initialInputs.exactAmounts);
 
     // Percentage split: percentage per member
-    const [percentages, setPercentages] = useState(
-        Object.fromEntries(members.map((m) => [m.uid, ""]))
-    );
+    const [percentages, setPercentages] = useState(initialInputs.percentages);
 
     // Reset split inputs when the member list changes. Compared by uid rather
     // than by array identity: the group page hands down a fresh array on every
@@ -49,10 +87,11 @@ export default function AddExpenseForm({
     const memberKey = members.map((m) => m.uid).join(",");
     const [splitsMemberKey, setSplitsMemberKey] = useState(memberKey);
     if (splitsMemberKey !== memberKey) {
+        const reset = initialSplitInputs(expense, members);
         setSplitsMemberKey(memberKey);
-        setSelectedMembers(new Set(members.map((m) => m.uid)));
-        setExactAmounts(Object.fromEntries(members.map((m) => [m.uid, ""])));
-        setPercentages(Object.fromEntries(members.map((m) => [m.uid, ""])));
+        setSelectedMembers(reset.selectedMembers);
+        setExactAmounts(reset.exactAmounts);
+        setPercentages(reset.percentages);
     }
 
     const toggleMember = (uid) => {
@@ -89,6 +128,7 @@ export default function AddExpenseForm({
     const exactTotalMatches = amountPaise > 0 && getExactTotalPaise() === amountPaise;
     const percentageTotalMatches = getPercentageTotalBasisPoints() === 10000;
 
+    /** @returns {{ splits: Object<string, number>, percentages?: Object<string, number> } | null} */
     const buildSplits = () => {
         const amountNum = parseFloat(amount);
         if (!amount || isNaN(amountNum) || amountNum <= 0) return null;
@@ -96,7 +136,7 @@ export default function AddExpenseForm({
         if (splitType === "equal") {
             const selected = members.filter((m) => selectedMembers.has(m.uid));
             if (selected.length === 0) return null;
-            return splitEqually(amountNum, selected.map((m) => m.uid));
+            return { splits: splitEqually(amountNum, selected.map((m) => m.uid)) };
         }
 
         if (splitType === "exact") {
@@ -110,7 +150,7 @@ export default function AddExpenseForm({
             }
             if (Object.keys(splits).length === 0) return null;
             if (!exactTotalMatches) return null;
-            return splits;
+            return { splits };
         }
 
         if (splitType === "percentage") {
@@ -122,7 +162,7 @@ export default function AddExpenseForm({
             }
             if (Object.keys(pcts).length === 0) return null;
             if (!percentageTotalMatches) return null;
-            return splitByPercentage(amountNum, pcts);
+            return { splits: splitByPercentage(amountNum, pcts), percentages: pcts };
         }
 
         return null;
@@ -143,8 +183,8 @@ export default function AddExpenseForm({
             return;
         }
 
-        const splits = buildSplits();
-        if (!splits) {
+        const built = buildSplits();
+        if (!built) {
             if (splitType === "exact") {
                 const diff = Math.round((amountNum - getExactTotal()) * 100) / 100;
                 setError(`Exact amounts must add up to ₹${amountNum.toFixed(2)}. Off by ₹${Math.abs(diff).toFixed(2)}`);
@@ -159,27 +199,33 @@ export default function AddExpenseForm({
         setLoading(true);
 
         try {
-            await addExpense(
-                groupId,
-                amountNum,
-                description.trim(),
-                paidBy,
-                currentUserId,
-                splitType,
-                splits
-            );
+            if (isEditing) {
+                await updateExpense(expense.id, groupId, currentUserId, {
+                    amount: amountNum,
+                    description,
+                    paidBy,
+                    splitType,
+                    splits: built.splits,
+                    percentages: built.percentages,
+                });
+            } else {
+                await addExpense(
+                    groupId,
+                    amountNum,
+                    description.trim(),
+                    paidBy,
+                    currentUserId,
+                    splitType,
+                    built.splits,
+                    built.percentages
+                );
+            }
 
-            // Reset form
-            setAmount("");
-            setDescription("");
-            setPaidBy(currentUserId);
-            setSplitType("equal");
-            setSelectedMembers(new Set(members.map((m) => m.uid)));
-            setExactAmounts(Object.fromEntries(members.map((m) => [m.uid, ""])));
-            setPercentages(Object.fromEntries(members.map((m) => [m.uid, ""])));
-            onExpenseAdded();
+            // The form unmounts when its dialog closes, so there's nothing to
+            // reset: the next one starts from scratch.
+            onSaved();
         } catch (err) {
-            setError(err.message || "Failed to add expense");
+            setError(err.message || "Failed to save expense");
         } finally {
             setLoading(false);
         }
@@ -440,7 +486,13 @@ export default function AddExpenseForm({
                 disabled={loading}
                 className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
             >
-                {loading ? "Adding..." : "Add Expense"}
+                {loading
+                    ? isEditing
+                        ? "Saving..."
+                        : "Adding..."
+                    : isEditing
+                      ? "Save Changes"
+                      : "Add Expense"}
             </button>
         </form>
     );

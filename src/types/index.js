@@ -45,7 +45,11 @@
  * @property {string} createdBy User UID
  * @property {SplitType} splitType
  * @property {Object<string, number>} splits uid -> amount owed
+ * @property {Object<string, number>} [percentages]
+ *   uid -> percentage, kept for percentage splits so an edit can show what was
+ *   typed. Expenses from before this existed don't have it.
  * @property {Timestamp} createdAt
+ * @property {Timestamp} [updatedAt] Set once the expense has been edited
  */
 
 /**

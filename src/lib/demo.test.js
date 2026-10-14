@@ -15,12 +15,14 @@ import {
     demoGetUsersByIds,
     demoRemoveMember,
     demoSaveUpiId,
+    demoUpdateExpense,
     demoUpdateGroupName,
     demoWatchGroup,
     demoWatchGroupExpenses,
     demoWatchUserGroups,
 } from "./demo";
 import { calculateBalancesByUid, calculateMemberBalances } from "./calculations";
+import { involvesOnlyMembers, updateExpense } from "./expenses";
 
 /**
  * Vitest doesn't load .env.local, so the Firebase config is always absent here
@@ -267,5 +269,84 @@ describe("watchers", () => {
         await demoUpdateGroupName(HOSTEL, "Room 202");
         await flush();
         expect(calls).toHaveLength(1);
+    });
+});
+
+describe("editing an expense", () => {
+    const PRIYA = "demo-priya";
+
+    it("keeps its place and marks it edited", async () => {
+        const [newest] = await demoGetGroupExpenses(HOSTEL);
+        await demoUpdateExpense(newest.id, { amount: 700, description: "Pizza + drinks" });
+
+        const [after] = await demoGetGroupExpenses(HOSTEL);
+        expect(after.id).toBe(newest.id);
+        expect(after.amount).toBe(700);
+        expect(after.createdAt.toMillis()).toBe(newest.createdAt.toMillis());
+        expect(after.updatedAt).toBeTruthy();
+    });
+
+    it("drops stale percentages when switching away from a percentage split", async () => {
+        const id = await demoAddExpense({
+            groupId: HOSTEL,
+            paidBy: YOU,
+            createdBy: YOU,
+            amount: 100,
+            description: "Snacks",
+            splitType: "percentage",
+            splits: { [YOU]: 50, [PRIYA]: 50 },
+            percentages: { [YOU]: 50, [PRIYA]: 50 },
+        });
+        await demoUpdateExpense(id, {
+            splitType: "exact",
+            splits: { [YOU]: 100 },
+            percentages: undefined,
+        });
+
+        const edited = (await demoGetGroupExpenses(HOSTEL)).find((e) => e.id === id);
+        expect(edited).not.toHaveProperty("percentages");
+    });
+
+    it("moves the balances with it", async () => {
+        const [pizza] = await demoGetGroupExpenses(HOSTEL);
+        const balanceOf = async (uid) => {
+            const expenses = await demoGetGroupExpenses(HOSTEL);
+            const group = await demoGetGroup(HOSTEL);
+            return calculateBalancesByUid(expenses, group.members)[uid];
+        };
+        const before = await balanceOf(YOU);
+
+        // Taking YOU out of the split clears their share of it.
+        const { [YOU]: yourShare, ...rest } = pizza.splits;
+        await demoUpdateExpense(pizza.id, { splits: { ...rest, [PRIYA]: rest[PRIYA] + yourShare } });
+
+        expect(paise(await balanceOf(YOU))).toBe(paise(before + yourShare));
+    });
+
+    // The whole point of refusing: the form can't show a former member, so
+    // saving would erase what they owe.
+    it("is refused once the expense involves someone who has left", async () => {
+        const goa = await demoGetGroupExpenses(GOA);
+        const withSana = goa.find((e) => Object.keys(e.splits).includes(SANA));
+        const group = await demoGetGroup(GOA);
+
+        expect(involvesOnlyMembers(withSana, group.members)).toBe(false);
+        await expect(
+            updateExpense(withSana.id, GOA, PRIYA, {
+                amount: withSana.amount,
+                description: "Scooter",
+                paidBy: PRIYA,
+                splitType: "equal",
+                splits: { [PRIYA]: withSana.amount },
+            })
+        ).rejects.toThrow(/left the group/);
+    });
+
+    it("is refused to anyone but the creator or the admin", async () => {
+        const [pizza] = await demoGetGroupExpenses(HOSTEL);
+        expect(pizza.createdBy).not.toBe(PRIYA);
+        await expect(
+            updateExpense(pizza.id, HOSTEL, PRIYA, { ...pizza, amount: 1 })
+        ).rejects.toThrow(/creator or group admin/);
     });
 });

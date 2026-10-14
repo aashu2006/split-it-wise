@@ -3,6 +3,8 @@ import {
     doc,
     addDoc,
     getDoc,
+    updateDoc,
+    deleteField,
     getDocs,
     deleteDoc,
     onSnapshot,
@@ -19,6 +21,7 @@ import {
     demoDeleteExpense,
     demoGetExpense,
     demoGetGroupExpenses,
+    demoUpdateExpense,
     demoWatchGroupExpenses,
 } from "./demo";
 
@@ -31,6 +34,7 @@ import {
  * @param {string} createdBy - User ID who created the expense
  * @param {import("@/types").SplitType} splitType - How the expense is split
  * @param {Object<string, number>} splits - Map of uid to amount owed
+ * @param {Object<string, number>} [percentages] - Map of uid to percentage, for a percentage split
  * @returns {Promise<string>} Expense ID
  */
 export const addExpense = async (
@@ -40,7 +44,8 @@ export const addExpense = async (
     paidBy,
     createdBy,
     splitType,
-    splits
+    splits,
+    percentages
 ) => {
     // Validate amount
     if (amount <= 0) {
@@ -55,6 +60,9 @@ export const addExpense = async (
         createdBy,
         splitType,
         splits,
+        // Kept so an edit can show what was typed. The shares alone can only
+        // be turned back into percentages approximately.
+        ...(splitType === "percentage" && percentages ? { percentages } : {}),
     };
 
     if (isDemoMode) return demoAddExpense(record);
@@ -161,4 +169,100 @@ export const deleteExpense = async (expenseId, groupId, requesterId) => {
     if (isDemoMode) return demoDeleteExpense(expenseId);
 
     await deleteDoc(doc(db, "expenses", expenseId));
+};
+
+/**
+ * Whether an expense can still be edited, given the group's current members.
+ *
+ * An expense that involves someone who has since left can't be: the form only
+ * offers current members, so saving it would quietly drop the leaver's share
+ * and with it their debt. The security rules refuse such a write anyway, since
+ * splits may only name current members.
+ *
+ * @param {import("@/types").Expense} expense
+ * @param {string[]} memberUids - UIDs of the group's current members
+ * @returns {boolean}
+ */
+export const involvesOnlyMembers = (expense, memberUids) => {
+    const current = new Set(memberUids);
+    return (
+        current.has(expense.paidBy) &&
+        Object.keys(expense.splits ?? {}).every((uid) => current.has(uid))
+    );
+};
+
+/**
+ * Edit an expense (creator or admin only)
+ *
+ * Everything but the group, the creator and the creation time can change.
+ * createdAt is left alone so an edit doesn't move the expense to the top of
+ * the list; updatedAt records that it was changed.
+ *
+ * @param {string} expenseId - Expense ID
+ * @param {string} groupId - Group ID
+ * @param {string} requesterId - User ID making the request
+ * @param {Object} changes
+ * @param {number} changes.amount - Amount in INR
+ * @param {string} changes.description
+ * @param {string} changes.paidBy - User ID who paid
+ * @param {import("@/types").SplitType} changes.splitType
+ * @param {Object<string, number>} changes.splits - Map of uid to amount owed
+ * @param {Object<string, number>} [changes.percentages] - For a percentage split
+ * @returns {Promise<void>}
+ */
+export const updateExpense = async (
+    expenseId,
+    groupId,
+    requesterId,
+    { amount, description, paidBy, splitType, splits, percentages }
+) => {
+    if (amount <= 0) {
+        throw new Error("Amount must be greater than 0");
+    }
+
+    const expense = isDemoMode
+        ? await demoGetExpense(expenseId)
+        : await getDoc(doc(db, "expenses", expenseId)).then((snap) =>
+              snap.exists() ? snap.data() : null
+          );
+    if (!expense) {
+        throw new Error("Expense not found");
+    }
+
+    const group = await getGroup(groupId);
+    if (!group) {
+        throw new Error("Group not found");
+    }
+
+    if (expense.createdBy !== requesterId && group.adminId !== requesterId) {
+        throw new Error("Only expense creator or group admin can edit expenses");
+    }
+
+    if (!involvesOnlyMembers(expense, group.members)) {
+        throw new Error("This expense involves someone who has left the group, so it can't be edited");
+    }
+
+    const record = {
+        amount: Number(amount.toFixed(2)),
+        description: description.trim(),
+        paidBy,
+        splitType,
+        splits,
+    };
+    const keepPercentages = splitType === "percentage" && percentages;
+
+    if (isDemoMode) {
+        return demoUpdateExpense(expenseId, {
+            ...record,
+            percentages: keepPercentages ? percentages : undefined,
+        });
+    }
+
+    await updateDoc(doc(db, "expenses", expenseId), {
+        ...record,
+        // Switching away from a percentage split must not leave the old
+        // percentages behind to be shown on the next edit.
+        percentages: keepPercentages ? percentages : deleteField(),
+        updatedAt: serverTimestamp(),
+    });
 };

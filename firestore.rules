@@ -5,7 +5,7 @@ rules_version = '2';
 // Every permission check in src/lib/* runs in the browser, so it can be
 // bypassed by calling the Firestore SDK directly from the console. These rules
 // are the real enforcement; treat the client-side checks as UX only and keep
-// the two in sync (see src/lib/groups.ts and src/lib/expenses.ts).
+// the two in sync (see src/lib/groups.js and src/lib/expenses.js).
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -116,23 +116,51 @@ service cloud.firestore {
 
     // --- expenses -----------------------------------------------------
     match /expenses/{expenseId} {
+
+      // Every field an expense may carry, so neither a create nor an edit can
+      // smuggle in extras. percentages is only written for percentage splits.
+      function expenseFields() {
+        return ['groupId', 'amount', 'description', 'paidBy', 'createdBy', 'splitType',
+                'splits', 'percentages', 'createdAt', 'updatedAt'];
+      }
+
+      // What a stored expense must look like, on the way in and after an edit.
+      // Payer and split may only name current members, which is also what stops
+      // an edit from rewriting an expense that involves someone who has left.
+      function validExpense(data) {
+        return data.keys().hasOnly(expenseFields())
+               && data.amount is number
+               && data.amount > 0
+               && data.amount < 10000000
+               && data.paidBy in groupData(data.groupId).members
+               && data.splitType in ['equal', 'exact', 'percentage']
+               && data.splits is map
+               && data.splits.keys().hasOnly(groupData(data.groupId).members)
+               && data.get('percentages', {}) is map
+               && data.description is string
+               && data.description.size() <= 200;
+      }
+
       allow read: if isGroupMember(resource.data.groupId);
 
       allow create: if signedIn()
                     && request.resource.data.createdBy == request.auth.uid
                     && isGroupMember(request.resource.data.groupId)
-                    && request.resource.data.amount is number
-                    && request.resource.data.amount > 0
-                    && request.resource.data.paidBy in groupData(request.resource.data.groupId).members
-                    && request.resource.data.splitType in ['equal', 'exact', 'percentage']
-                    && request.resource.data.splits.keys().hasOnly(groupData(request.resource.data.groupId).members)
-                    && request.resource.data.description is string
-                    && request.resource.data.description.size() <= 200
-                    && request.resource.data.amount < 10000000
+                    && validExpense(request.resource.data)
                     && request.resource.data.createdAt == request.time;
 
-      // There is no edit-expense flow in the app; delete and re-add instead.
-      allow update: if false;
+      // Same people as delete: whoever added it, or the admin. They must still
+      // be in the group, and the expense can't change hands — group, creator
+      // and creation time stay put, and updatedAt stamps the edit.
+      allow update: if signedIn()
+                    && isGroupMember(resource.data.groupId)
+                    && (resource.data.createdBy == request.auth.uid
+                        || isGroupAdmin(resource.data.groupId))
+                    && request.resource.data.groupId == resource.data.groupId
+                    && request.resource.data.createdBy == resource.data.createdBy
+                    && request.resource.data.createdAt == resource.data.createdAt
+                    && request.resource.data.updatedAt == request.time
+                    && validExpense(request.resource.data);
 
       // The creator check comes first so that deleting your own expense costs
       // no document reads. deleteGroup() batches deletes and relies on staying

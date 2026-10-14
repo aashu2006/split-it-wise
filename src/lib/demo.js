@@ -298,6 +298,14 @@ export const demoGetExpense = async (expenseId) => {
     return expense ? detach(expense) : null;
 };
 
+export const demoUpdateExpense = async (expenseId, changes) => {
+    const expense = store.expenses.find((e) => e.id === expenseId);
+    if (!expense) return;
+    Object.assign(expense, changes, { updatedAt: Timestamp.now() });
+    if (changes.percentages === undefined) delete expense.percentages;
+    notify();
+};
+
 export const demoDeleteExpense = async (expenseId) => {
     store.expenses = store.expenses.filter((e) => e.id !== expenseId);
     notify();
