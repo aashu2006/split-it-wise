@@ -3,9 +3,23 @@
 import { deleteExpense, involvesOnlyMembers } from "@/lib/expenses";
 import { useToast } from "@/context/ToastContext";
 import ConfirmModal from "./ConfirmModal";
+import { formatRupees } from "@/components/ui/kit";
 import { useState } from "react";
 
+const toDate = (timestamp) =>
+    timestamp ? (timestamp.toDate ? timestamp.toDate() : new Date(timestamp)) : null;
+
+/** "14 oct", the day heading expenses are grouped under. */
+const dayLabel = (date) =>
+    date ? date.toLocaleDateString("en-IN", { day: "numeric", month: "short" }).toLowerCase() : "";
+
 /**
+ * The group's expenses, newest first, grouped by day.
+ *
+ * A row opens the expense for editing when you're allowed to change it (you
+ * added it, or you're the admin); delete lives in that sheet too. Everyone
+ * else's rows are plain text.
+ *
  * @param {Object} props
  * @param {import("@/types").Expense[]} props.expenses
  * @param {import("@/types").User[]} props.members - Current members
@@ -26,145 +40,125 @@ export default function ExpenseList({
     isAdmin,
     onEdit,
 }) {
-    const [deleting, setDeleting] = useState(null);
+    // An expense that can't be edited (it involves someone who left) but can
+    // still be deleted, waiting on confirmation.
     const [pendingDelete, setPendingDelete] = useState(null);
     const { showToast } = useToast();
 
-    // Create a map of uid to user for quick lookup
     const userMap = new Map(profiles.map((p) => [p.uid, p]));
     const currentUids = new Set(members.map((m) => m.uid));
 
-    const formatDate = (timestamp) => {
-        if (!timestamp) return "";
-        const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-        return date.toLocaleDateString("en-IN", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-        });
+    const payerName = (uid) => {
+        if (uid === currentUserId) return "you";
+        const name = userMap.get(uid)?.name || "someone who left";
+        return currentUids.has(uid) ? name : `${name} (left group)`;
     };
 
-    const handleDelete = async (expense) => {
-        setPendingDelete(null);
-        setDeleting(expense.id);
-
-        try {
-            await deleteExpense(expense.id, groupId, currentUserId);
-        } catch (error) {
-            showToast(error.message || "Failed to delete expense");
-        } finally {
-            setDeleting(null);
-        }
+    const splitSummary = (expense) => {
+        const shares = Object.values(expense.splits ?? {});
+        if (shares.length === 0) return `split ${members.length} ways`;
+        if (expense.splitType === "percentage") return "split by %";
+        if (expense.splitType === "exact") return "exact split";
+        return shares.every((share) => share === shares[0])
+            ? `${formatRupees(shares[0])} each`
+            : `split ${shares.length} ways`;
     };
 
     // Editing and deleting are open to the same people, matching the rules.
-    const canChange = (expense) => {
-        return expense.createdBy === currentUserId || isAdmin;
-    };
+    const canChange = (expense) => expense.createdBy === currentUserId || isAdmin;
 
-    const handleEdit = (expense) => {
-        // Explained on tap rather than by hiding the button, so it doesn't look
-        // like editing is simply missing for this one expense.
-        if (!involvesOnlyMembers(expense, members.map((m) => m.uid))) {
-            showToast(
-                "This expense involves someone who has left the group, so it can't be edited. Delete and re-add it if it's wrong."
-            );
+    const open = (expense) => {
+        if (!involvesOnlyMembers(expense, [...currentUids])) {
+            setPendingDelete(expense);
             return;
         }
         onEdit(expense);
     };
 
+    const handleDelete = async (expense) => {
+        setPendingDelete(null);
+        try {
+            await deleteExpense(expense.id, groupId, currentUserId);
+        } catch (error) {
+            showToast(error.message || "couldn't delete the expense");
+        }
+    };
+
     if (expenses.length === 0) {
         return (
-            <div className="text-center py-8 text-muted-foreground">
-                No expenses yet. Add your first expense to get started!
-            </div>
+            <p className="text-[15px] text-muted-foreground">
+                no expenses yet. add the first one below.
+            </p>
         );
+    }
+
+    // Consecutive expenses on the same day share a heading.
+    const days = [];
+    for (const expense of expenses) {
+        const label = dayLabel(toDate(expense.createdAt));
+        const last = days[days.length - 1];
+        if (last && last.label === label) last.expenses.push(expense);
+        else days.push({ label, expenses: [expense] });
     }
 
     return (
         <>
-            <ul className="space-y-3" aria-label="Expenses">
-                {expenses.map((expense) => {
-                    const payer = userMap.get(expense.paidBy);
-                    const splitLabel =
-                        expense.splitType === "percentage"
-                            ? "By %"
-                            : expense.splitType === "exact"
-                            ? "Exact"
-                            : "Equal";
-
-                    const splitCount = expense.splits
-                        ? Object.keys(expense.splits).length
-                        : members.length;
-
-                    const splitSummary = expense.splits
-                        ? Object.values(expense.splits).every((v, _, arr) => v === arr[0])
-                            ? `₹${Object.values(expense.splits)[0]?.toFixed(2)} each`
-                            : `${splitCount} people`
-                        : `₹${(expense.amount / members.length).toFixed(2)} per person`;
-
-                    return (
-                        <li
-                            key={expense.id}
-                            className="bg-muted rounded-lg p-4 border border-border"
-                        >
-                            <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <span className="text-lg font-semibold text-foreground">
-                                            ₹{expense.amount.toFixed(2)}
+            <div className="flex flex-col gap-4">
+                {days.map((day) => (
+                    <section key={day.label || "undated"} aria-label={day.label || "expenses"}>
+                        <p className="font-mono text-[11px] text-subtle">{day.label}</p>
+                        <ul aria-label="expenses">
+                            {day.expenses.map((expense) => {
+                                const content = (
+                                    <>
+                                        <span className="flex min-w-0 flex-col gap-0.5 text-left">
+                                            <span className="truncate text-[15px] text-foreground">
+                                                {expense.description}
+                                            </span>
+                                            <span className="text-[13px] text-subtle">
+                                                {payerName(expense.paidBy)} paid · {splitSummary(expense)}
+                                                {expense.updatedAt && " · edited"}
+                                            </span>
                                         </span>
-                                        {expense.description && (
-                                            <span className="text-muted-foreground">• {expense.description}</span>
-                                        )}
-                                    </div>
-                                    <div className="text-sm text-muted-foreground">
-                                        Paid by <span className="font-medium">{payer?.name || "Someone who left"}</span>
-                                        {expense.paidBy === currentUserId && " (You)"}
-                                        {payer && !currentUids.has(expense.paidBy) && " (left group)"}
-                                    </div>
-                                    <div className="text-xs text-muted-foreground mt-1">
-                                        {formatDate(expense.createdAt)} • {splitLabel} split • {splitSummary}
-                                        {expense.updatedAt && " • edited"}
-                                    </div>
-                                </div>
+                                        <span className="shrink-0 font-mono text-sm text-foreground">
+                                            {formatRupees(expense.amount)}
+                                        </span>
+                                    </>
+                                );
 
-                                {canChange(expense) && (
-                                    <div className="flex items-center gap-4 ml-4">
-                                        <button
-                                            onClick={() => handleEdit(expense)}
-                                            disabled={deleting === expense.id}
-                                            className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium disabled:opacity-50"
-                                        >
-                                            Edit
-                                        </button>
-                                        <button
-                                            onClick={() => setPendingDelete(expense)}
-                                            disabled={deleting === expense.id}
-                                            className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-sm font-medium disabled:opacity-50"
-                                        >
-                                            {deleting === expense.id ? "..." : "Delete"}
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        </li>
-                    );
-                })}
-            </ul>
+                                return (
+                                    <li key={expense.id} className="border-b border-hairline">
+                                        {canChange(expense) ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => open(expense)}
+                                                aria-label={`${expense.description}, ${formatRupees(expense.amount)}. open to edit`}
+                                                className="flex w-full items-start justify-between gap-4 py-3 transition-opacity hover:opacity-80"
+                                            >
+                                                {content}
+                                            </button>
+                                        ) : (
+                                            <div className="flex items-start justify-between gap-4 py-3">
+                                                {content}
+                                            </div>
+                                        )}
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    </section>
+                ))}
+            </div>
 
             <ConfirmModal
                 isOpen={pendingDelete !== null}
-                title="Delete expense"
+                title="can't edit this one"
                 message={
                     pendingDelete
-                        ? `Delete ₹${pendingDelete.amount.toFixed(2)}${
-                              pendingDelete.description ? ` — ${pendingDelete.description}` : ""
-                          }? Everyone's balances will be recalculated.`
+                        ? `${pendingDelete.description} involves someone who has left the group, so it can't be edited. you can delete it and add it again if it's wrong.`
                         : ""
                 }
-                confirmText="Delete"
+                confirmText="delete expense"
                 onConfirm={() => pendingDelete && handleDelete(pendingDelete)}
                 onCancel={() => setPendingDelete(null)}
                 danger

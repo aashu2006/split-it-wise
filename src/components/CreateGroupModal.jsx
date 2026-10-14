@@ -10,6 +10,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { buttonClass, fieldClass, labelClass } from "@/components/ui/kit";
 
 /**
  * @param {Object} props
@@ -27,7 +28,7 @@ export default function CreateGroupModal({ isOpen, onClose }) {
         if (!user) return;
 
         if (!groupName.trim()) {
-            setError("Group name is required");
+            setError("give the group a name");
             return;
         }
 
@@ -40,7 +41,7 @@ export default function CreateGroupModal({ isOpen, onClose }) {
             setGroupName("");
             onClose();
         } catch (err) {
-            setError("Failed to create group. Please try again.");
+            setError("couldn't create the group. try again.");
             console.error(err);
         } finally {
             setLoading(false);
@@ -49,11 +50,9 @@ export default function CreateGroupModal({ isOpen, onClose }) {
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="sm:max-w-md p-6">
+            <DialogContent>
                 <DialogHeader>
-                    <DialogTitle className="text-2xl font-bold text-foreground">
-                        Create New Group
-                    </DialogTitle>
+                    <DialogTitle>new group</DialogTitle>
                     {/* Announced to screen readers only; the single labelled
                         field is self-explanatory on screen. Radix warns if a
                         dialog has no description at all. */}
@@ -62,44 +61,30 @@ export default function CreateGroupModal({ isOpen, onClose }) {
                     </DialogDescription>
                 </DialogHeader>
 
-                <form onSubmit={handleSubmit}>
-                    <div className="mb-4">
-                        <label htmlFor="groupName" className="block text-sm font-medium text-foreground mb-2">
-                            Group Name
+                <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+                    <div className="flex flex-col gap-2">
+                        <label htmlFor="groupName" className={labelClass}>
+                            name
                         </label>
                         <input
                             type="text"
                             id="groupName"
                             value={groupName}
                             onChange={(e) => setGroupName(e.target.value)}
-                            placeholder="e.g., Hostel Room 101"
-                            className="w-full px-4 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-foreground"
+                            placeholder="hostel room 101"
+                            maxLength={60}
+                            className={fieldClass}
                             disabled={loading}
                             autoFocus
                         />
                     </div>
 
-                    {error && (
-                        <div className="mb-4 text-red-600 dark:text-red-400 dark:text-red-400 text-sm">{error}</div>
-                    )}
+                    {error && <p className="text-sm text-negative">{error}</p>}
 
-                    <div className="flex gap-3 justify-end">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="px-4 py-2 text-foreground hover:bg-muted rounded-md"
-                            disabled={loading}
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                            disabled={loading}
-                        >
-                            {loading ? "Creating..." : "Create Group"}
-                        </button>
-                    </div>
+                    <button type="submit" className={buttonClass(true)} disabled={loading}>
+                        <span>{loading ? "creating…" : "create group"}</span>
+                        <span className="text-muted-foreground" aria-hidden="true">→</span>
+                    </button>
                 </form>
             </DialogContent>
         </Dialog>

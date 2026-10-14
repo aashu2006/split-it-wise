@@ -1,12 +1,36 @@
 "use client";
 
+import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { subscribeToUserGroups } from "@/lib/groups";
-import GroupCard from "@/components/GroupCard";
+import { describeYourBalance } from "@/lib/calculations";
+import { useGroupSummaries } from "@/hooks/useGroupSummaries";
 import CreateGroupModal from "@/components/CreateGroupModal";
-import ThemeToggle from "@/components/ThemeToggle";
 import Landing from "@/components/Landing";
+import {
+  AccountMenu,
+  AppHeader,
+  buttonClass,
+  formatRupees,
+  timeAgo,
+  Wordmark,
+} from "@/components/ui/kit";
+
+/** Your balance in a group, signed and coloured: +300.00, −400.00, or "settled". */
+function BalanceFigure({ balance }) {
+  if (balance === null) return <span className="font-mono text-[15px] text-subtle">…</span>;
+  if (balance === 0) return <span className="font-mono text-[13px] text-subtle">settled</span>;
+  return (
+    <span className="flex flex-col items-end gap-0.5">
+      <span className={`font-mono text-[15px] ${balance > 0 ? "text-positive" : "text-negative"}`}>
+        {balance > 0 ? "+" : "−"}
+        {formatRupees(balance).slice(1)}
+      </span>
+      <span className="text-xs text-subtle">{balance > 0 ? "you get back" : "you pay"}</span>
+    </span>
+  );
+}
 
 export default function Home() {
   const { user, loading, signInWithGoogle, logout, isFirebaseConfigured } = useAuth();
@@ -31,13 +55,21 @@ export default function Home() {
         console.error("Error loading groups:", error);
         // Said out loud rather than only in the console: an empty page with no
         // explanation reads as "you have no groups", which is a different thing.
-        setGroupsError("Couldn't load your groups. Check your connection and try again.");
+        setGroupsError("couldn't load your groups. check your connection and try again.");
       }
     );
   }, [uid, attempt]);
 
-  const groups = uid && loaded?.uid === uid ? loaded.groups : null;
-  const loadingGroups = !groups && !groupsError;
+  // Most recently active first.
+  const groups = useMemo(() => {
+    const list = uid && loaded?.uid === uid ? loaded.groups : null;
+    return list
+      ? [...list].sort(
+          (a, b) => (b.updatedAt?.toMillis?.() ?? 0) - (a.updatedAt?.toMillis?.() ?? 0)
+        )
+      : null;
+  }, [uid, loaded]);
+  const { summaries, total } = useGroupSummaries(groups, uid);
 
   const retry = () => {
     setGroupsError("");
@@ -45,103 +77,114 @@ export default function Home() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-muted-foreground">Loading...</div>
-      </div>
-    );
+    return <div className="min-h-dvh bg-background" aria-busy="true" />;
   }
 
   if (!user) {
-    return (
-      <Landing
-        onSignIn={signInWithGoogle}
-        isFirebaseConfigured={isFirebaseConfigured}
-      />
-    );
+    return <Landing onSignIn={signInWithGoogle} isFirebaseConfigured={isFirebaseConfigured} />;
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-card border-b border-border">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-foreground">Split-It-Wise</h1>
-            {/* Easy to forget you're on fixtures once you're inside the app. */}
-            {!isFirebaseConfigured && (
-              <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 font-mono text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
-                demo
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-1">
-            <ThemeToggle />
-            <button
-              onClick={logout}
-              className="text-sm text-muted-foreground hover:text-foreground px-2"
-            >
-              Logout
+    <div className="min-h-dvh bg-background">
+      <div className="mx-auto w-full max-w-xl px-6 pb-32">
+        <AppHeader
+          left={
+            <span className="flex items-center gap-2">
+              <Wordmark />
+              {/* Easy to forget you're on fixtures once you're inside the app. */}
+              {!isFirebaseConfigured && (
+                <span className="rounded-sm border border-border px-1.5 font-mono text-[11px] text-subtle">
+                  demo
+                </span>
+              )}
+            </span>
+          }
+          right={
+            <AccountMenu
+              name={user.displayName || "you"}
+              email={user.email || ""}
+              onLogout={logout}
+            />
+          }
+        />
+
+        <section className="pt-6 pb-7">
+          <h1 className="text-[22px] font-medium tracking-tight text-foreground">your groups</h1>
+          {groups && groups.length > 0 && total !== null && (
+            <p className="mt-2 font-mono text-[13px] text-muted-foreground">
+              {total === 0 ? (
+                "overall you're all settled"
+              ) : (
+                <>
+                  overall {describeYourBalance(total)}{" "}
+                  <span className={total > 0 ? "text-positive" : "text-negative"}>
+                    {formatRupees(total)}
+                  </span>
+                </>
+              )}
+            </p>
+          )}
+        </section>
+
+        {groupsError ? (
+          <div className="flex flex-col items-start gap-4 border-t border-hairline pt-6">
+            <p className="text-[15px] text-negative">{groupsError}</p>
+            <button type="button" onClick={retry} className={buttonClass()}>
+              <span>try again</span>
+              <span className="text-muted-foreground">↻</span>
             </button>
           </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-4 py-6">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-foreground">Your Groups</h2>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-          >
-            + Create Group
-          </button>
-        </div>
-
-        {loadingGroups ? (
-          <div className="text-center py-12 text-muted-foreground">Loading groups...</div>
-        ) : groupsError ? (
-          <div className="text-center py-12">
-            <p className="text-red-600 dark:text-red-400 mb-4">{groupsError}</p>
-            <button
-              onClick={retry}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
-            >
-              Try again
-            </button>
-          </div>
+        ) : !groups ? (
+          <p className="border-t border-hairline pt-6 font-mono text-[13px] text-subtle">loading…</p>
         ) : groups.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground mb-4">You haven&apos;t joined any groups yet</p>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
-            >
-              Create your first group
-            </button>
+          <div className="border-t border-hairline pt-6">
+            <p className="text-[15px] text-muted-foreground">
+              no groups yet. make one, then share the invite link with your friends.
+            </p>
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2">
-            {groups.map((group) => (
-              <GroupCard key={group.id} group={group} />
-            ))}
-          </div>
+          <ul className="border-b border-hairline" aria-label="your groups">
+            {groups.map((group) => {
+              const summary = summaries[group.id] ?? { balance: null, latest: null };
+              const people = group.members.length;
+              return (
+                <li key={group.id} className="border-t border-hairline">
+                  <Link
+                    href={`/group/${group.id}`}
+                    className="flex items-center justify-between gap-4 py-[18px]"
+                  >
+                    <span className="flex min-w-0 flex-col gap-1">
+                      <span className="truncate text-base font-medium text-foreground">
+                        {group.name}
+                      </span>
+                      <span className="truncate text-[13px] text-subtle">
+                        {people} {people === 1 ? "person" : "people"}
+                        {summary.latest &&
+                          ` · ${summary.latest.description.toLowerCase()}, ${timeAgo(summary.latest.createdAt)}`}
+                      </span>
+                    </span>
+                    <BalanceFigure balance={summary.balance} />
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
         )}
-      </main>
+      </div>
 
-      {/* Footer */}
-      <footer className="fixed bottom-0 w-full bg-card border-t border-border py-3">
-        <div className="text-center text-sm text-muted-foreground">
-          Made by <span className="font-medium">Akshat Patil</span>
+      {/* Kept within thumb reach on a phone, and within the column on desktop. */}
+      <div className="fixed inset-x-0 bottom-0 bg-background pt-3 pb-7">
+        <div className="mx-auto w-full max-w-xl px-6">
+          <button type="button" onClick={() => setShowCreateModal(true)} className={buttonClass(true)}>
+            <span>new group</span>
+            <span className="text-muted-foreground" aria-hidden="true">
+              +
+            </span>
+          </button>
         </div>
-      </footer>
+      </div>
 
-      {/* Create Group Modal */}
-      <CreateGroupModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-      />
+      <CreateGroupModal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} />
     </div>
   );
 }

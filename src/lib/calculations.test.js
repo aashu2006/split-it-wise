@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
     calculateBalancesByUid,
     calculateMemberBalances,
+    describeYourBalance,
     formatBalance,
     percentagesFromSplits,
     simplifyDebts,
@@ -275,9 +276,9 @@ describe("formatBalance", () => {
     it("reads as a statement about the person, not about you", () => {
         // It renders under every member's name, so second person would be
         // wrong on every row except the signed-in user's.
-        expect(formatBalance(300).text).toBe("Is owed ₹300.00");
-        expect(formatBalance(-300).text).toBe("Owes ₹300.00");
-        expect(formatBalance(0).text).toBe("Settled");
+        expect(formatBalance(300).text).toBe("gets back ₹300.00");
+        expect(formatBalance(-300).text).toBe("needs to pay ₹300.00");
+        expect(formatBalance(0).text).toBe("all settled");
     });
 
     it("colour-codes the three states", () => {
@@ -287,7 +288,16 @@ describe("formatBalance", () => {
     });
 
     it("shows a debt as a positive number", () => {
-        expect(formatBalance(-45.5).text).toBe("Owes ₹45.50");
+        expect(formatBalance(-45.5).text).toBe("needs to pay ₹45.50");
+    });
+
+    // "Owed" and "owing" read as near-identical and confused people about
+    // which way the money went.
+    it("avoids owe, owed and owing", () => {
+        for (const balance of [250, -250, 0]) {
+            expect(formatBalance(balance).text).not.toMatch(/ow(e|ed|es|ing)\b/i);
+            expect(describeYourBalance(balance)).not.toMatch(/ow(e|ed|es|ing)\b/i);
+        }
     });
 
     it("is written in English only", () => {
@@ -295,6 +305,14 @@ describe("formatBalance", () => {
         for (const balance of [250, -250, 0]) {
             expect(formatBalance(balance).text).toMatch(/^[A-Za-z₹0-9. ]+$/);
         }
+    });
+});
+
+describe("describeYourBalance", () => {
+    it("speaks to you", () => {
+        expect(describeYourBalance(300)).toBe("you get back");
+        expect(describeYourBalance(-300)).toBe("you need to pay");
+        expect(describeYourBalance(0)).toBe("you're all settled");
     });
 });
 

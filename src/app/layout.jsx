@@ -1,22 +1,26 @@
 import { AuthProvider } from "@/context/AuthContext";
 import { ToastProvider } from "@/context/ToastContext";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import { Geist, Geist_Mono } from "next/font/google";
+import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const plexSans = IBM_Plex_Sans({
+  variable: "--font-plex-sans",
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+// Amounts, labels and buttons are set in the mono: it's what makes the app
+// read like a ledger, and its figures line up in columns on their own.
+const plexMono = IBM_Plex_Mono({
+  variable: "--font-plex-mono",
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
 });
 
 const SITE_URL = "https://split-it-wise.vercel.app";
 const DESCRIPTION =
-  "Split bills with friends, see who owes whom, and settle up in the fewest payments. Free, no ads, open source.";
+  "Add what you spent, see who pays whom, settle up. Free, no ads, open source.";
 
 // Icons, the link-preview image and the manifest come from the file
 // conventions next to this layout (icon.svg, apple-icon.png,
@@ -42,22 +46,21 @@ export const metadata = {
     type: "website",
     url: "/",
     siteName: "Split-It-Wise",
-    title: "Split-It-Wise · Owed or owing?",
+    title: "Split-It-Wise · split bills, not friendships.",
     description: DESCRIPTION,
     locale: "en_IN",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Split-It-Wise · Owed or owing?",
+    title: "Split-It-Wise · split bills, not friendships.",
     description: DESCRIPTION,
   },
 };
 
+// Dark is the default whatever the system setting (see ThemeProvider below),
+// so the browser chrome starts dark too.
 export const viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
-  ],
+  themeColor: "#0b0b0b",
 };
 
 export default function RootLayout({ children }) {
@@ -70,14 +73,14 @@ export default function RootLayout({ children }) {
     // markup differ by design on this one element.
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable}`}
+      className={`${plexSans.variable} ${plexMono.variable}`}
       suppressHydrationWarning
     >
       <body className="antialiased">
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
-          enableSystem
+          defaultTheme="dark"
+          enableSystem={false}
           disableTransitionOnChange
         >
           <AuthProvider>

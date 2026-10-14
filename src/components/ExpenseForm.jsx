@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { addExpense, updateExpense } from "@/lib/expenses";
 import { splitEqually, splitByPercentage, percentagesFromSplits } from "@/lib/calculations";
+import { buttonClass, fieldClass, formatRupees, labelClass } from "@/components/ui/kit";
 
 /**
  * The split inputs for each tab, either blank or filled in from an expense
@@ -174,12 +175,12 @@ export default function ExpenseForm({
 
         const amountNum = parseFloat(amount);
         if (!amount || isNaN(amountNum) || amountNum <= 0) {
-            setError("Please enter a valid amount greater than 0");
+            setError("enter an amount above ₹0");
             return;
         }
 
         if (!description.trim()) {
-            setError("Please enter a description");
+            setError("say what it was for");
             return;
         }
 
@@ -187,11 +188,11 @@ export default function ExpenseForm({
         if (!built) {
             if (splitType === "exact") {
                 const diff = Math.round((amountNum - getExactTotal()) * 100) / 100;
-                setError(`Exact amounts must add up to ₹${amountNum.toFixed(2)}. Off by ₹${Math.abs(diff).toFixed(2)}`);
+                setError(`the amounts must add up to ₹${amountNum.toFixed(2)}. they're off by ₹${Math.abs(diff).toFixed(2)}`);
             } else if (splitType === "percentage") {
-                setError(`Percentages must add up to 100%. Currently ${getPercentageTotal()}%`);
+                setError(`the percentages must add up to 100%. right now they add up to ${getPercentageTotal()}%`);
             } else {
-                setError("Please select at least one member for the split");
+                setError("pick at least one person to split it with");
             }
             return;
         }
@@ -225,7 +226,7 @@ export default function ExpenseForm({
             // reset: the next one starts from scratch.
             onSaved();
         } catch (err) {
-            setError(err.message || "Failed to save expense");
+            setError(err.message || "couldn't save the expense");
         } finally {
             setLoading(false);
         }
@@ -240,259 +241,227 @@ export default function ExpenseForm({
         members.filter((m) => selectedMembers.has(m.uid)).map((m) => m.uid)
     );
 
+    const nameOf = (member) => (member.uid === currentUserId ? "you" : member.name);
+
+    // The running total under the exact and percent splits: quiet while it's
+    // short, green once it adds up.
+    const totalLine = (matches, text) => (
+        <p className={`font-mono text-[13px] ${matches ? "text-positive" : "text-subtle"}`}>{text}</p>
+    );
+
     return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Amount Input */}
-            <div>
-                <label htmlFor="amount" className="block text-sm font-medium text-foreground mb-1">
-                    Amount (₹)
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+            <div className="flex flex-col gap-2">
+                <label htmlFor="amount" className={labelClass}>
+                    amount (₹)
                 </label>
                 <input
                     type="number"
                     id="amount"
+                    inputMode="decimal"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     placeholder="0.00"
                     step="0.01"
                     min="0"
-                    className="w-full px-4 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-foreground"
+                    className={`${fieldClass} font-mono`}
                     disabled={loading}
                     required
                 />
             </div>
 
-            {/* Description Input */}
-            <div>
-                <label htmlFor="description" className="block text-sm font-medium text-foreground mb-1">
-                    Description
+            <div className="flex flex-col gap-2">
+                <label htmlFor="description" className={labelClass}>
+                    for
                 </label>
                 <input
                     type="text"
                     id="description"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="e.g., Groceries, Dinner, Movie tickets"
+                    placeholder="groceries, dinner, cab…"
                     // Security rules cap the stored description at 200
                     // characters; stop here so a long one is trimmed as it is
                     // typed rather than rejected as a permission error on save.
                     maxLength={200}
-                    className="w-full px-4 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-foreground"
+                    className={fieldClass}
                     disabled={loading}
                     required
                 />
             </div>
 
-            {/* Paid By Select */}
-            <div>
-                <label htmlFor="paidBy" className="block text-sm font-medium text-foreground mb-1">
-                    Paid by
+            <div className="flex flex-col gap-2">
+                <label htmlFor="paidBy" className={labelClass}>
+                    paid by
                 </label>
                 <select
                     id="paidBy"
                     value={paidBy}
                     onChange={(e) => setPaidBy(e.target.value)}
-                    className="w-full px-4 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-foreground"
+                    className={fieldClass}
                     disabled={loading}
                 >
                     {members.map((member) => (
                         <option key={member.uid} value={member.uid}>
-                            {member.name} {member.uid === currentUserId ? "(You)" : ""}
+                            {nameOf(member)}
                         </option>
                     ))}
                 </select>
             </div>
 
-            {/* Split Type Tabs */}
-            <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                    Split method
-                </label>
-                <div className="flex rounded-lg border border-input overflow-hidden">
+            <fieldset className="flex flex-col gap-3">
+                <legend className={`${labelClass} mb-2`}>split</legend>
+                <div className="grid grid-cols-3 gap-1 rounded-md border border-border p-1">
                     {["equal", "exact", "percentage"].map((type) => (
                         <button
                             key={type}
                             type="button"
                             onClick={() => setSplitType(type)}
-                            className={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${
+                            aria-pressed={splitType === type}
+                            className={`h-10 rounded-sm font-mono text-[13px] transition-colors ${
                                 splitType === type
-                                    ? "bg-green-600 text-white"
-                                    : "bg-card text-foreground hover:bg-muted"
+                                    ? "bg-muted text-foreground"
+                                    : "text-muted-foreground hover:text-foreground"
                             }`}
                             disabled={loading}
                         >
-                            {type === "equal" ? "Equal" : type === "exact" ? "Exact" : "Percent"}
+                            {type === "percentage" ? "percent" : type}
                         </button>
                     ))}
                 </div>
-            </div>
 
-            {/* Split Configuration */}
-            <div className="space-y-2">
                 {splitType === "equal" && (
                     <>
-                        <p className="text-xs text-muted-foreground">Select who is part of this expense:</p>
-                        <div className="space-y-1">
+                        <ul className="flex flex-col">
                             {members.map((member) => (
-                                <label
-                                    key={member.uid}
-                                    className="flex items-center justify-between p-2 rounded-md hover:bg-muted cursor-pointer"
-                                >
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedMembers.has(member.uid)}
-                                            onChange={() => toggleMember(member.uid)}
-                                            className="h-4 w-4 text-green-600 dark:text-green-400 rounded border-input focus:ring-green-500"
-                                            disabled={loading}
-                                        />
-                                        <span className="text-sm text-foreground">
-                                            {member.name}
-                                            {member.uid === currentUserId ? " (You)" : ""}
+                                <li key={member.uid}>
+                                    <label className="flex min-h-11 cursor-pointer items-center justify-between gap-3">
+                                        <span className="flex items-center gap-3">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedMembers.has(member.uid)}
+                                                onChange={() => toggleMember(member.uid)}
+                                                className="h-4 w-4 accent-foreground"
+                                                disabled={loading}
+                                            />
+                                            <span className="text-[15px] text-foreground">{nameOf(member)}</span>
                                         </span>
-                                    </div>
-                                    {selectedMembers.has(member.uid) && amountNum > 0 && (
-                                        <span className="text-sm text-muted-foreground">
-                                            ₹{equalPreview[member.uid].toFixed(2)}
-                                        </span>
-                                    )}
-                                </label>
+                                        {selectedMembers.has(member.uid) && amountNum > 0 && (
+                                            <span className="font-mono text-[13px] text-muted-foreground">
+                                                {formatRupees(equalPreview[member.uid])}
+                                            </span>
+                                        )}
+                                    </label>
+                                </li>
                             ))}
-                        </div>
-                        {amountNum > 0 && (
-                            <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-900 rounded-md p-2 mt-1">
-                                <p className="text-sm text-blue-800 dark:text-blue-200">
-                                    ₹{amountNum.toFixed(2)} between {selectedMembers.size} of {members.length} members
-                                </p>
-                            </div>
-                        )}
+                        </ul>
+                        {amountNum > 0 &&
+                            totalLine(
+                                false,
+                                `${formatRupees(amountNum)} between ${selectedMembers.size} of ${members.length}`
+                            )}
                     </>
                 )}
 
                 {splitType === "exact" && (
                     <>
-                        <p className="text-xs text-muted-foreground">Enter the exact amount each person owes:</p>
-                        <div className="space-y-2">
+                        <ul className="flex flex-col gap-2">
                             {members.map((member) => (
-                                <div key={member.uid} className="flex items-center gap-2">
-                                    <span className="text-sm text-foreground min-w-[100px] truncate">
-                                        {member.name}
-                                        {member.uid === currentUserId ? " (You)" : ""}
-                                    </span>
-                                    <div className="flex items-center flex-1">
-                                        <span className="text-muted-foreground mr-1">₹</span>
-                                        <input
-                                            type="number"
-                                            value={exactAmounts[member.uid] || ""}
-                                            onChange={(e) =>
-                                                setExactAmounts({ ...exactAmounts, [member.uid]: e.target.value })
-                                            }
-                                            placeholder="0.00"
-                                            step="0.01"
-                                            min="0"
-                                            className="w-full px-2 py-1.5 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-foreground text-sm"
-                                            disabled={loading}
-                                        />
-                                    </div>
-                                </div>
+                                <li key={member.uid} className="flex items-center gap-3">
+                                    <label
+                                        htmlFor={`exact-${member.uid}`}
+                                        className="min-w-24 truncate text-[15px] text-foreground"
+                                    >
+                                        {nameOf(member)}
+                                    </label>
+                                    <input
+                                        id={`exact-${member.uid}`}
+                                        type="number"
+                                        inputMode="decimal"
+                                        value={exactAmounts[member.uid] || ""}
+                                        onChange={(e) =>
+                                            setExactAmounts({ ...exactAmounts, [member.uid]: e.target.value })
+                                        }
+                                        placeholder="₹0.00"
+                                        step="0.01"
+                                        min="0"
+                                        className={`${fieldClass} h-11 font-mono`}
+                                        disabled={loading}
+                                    />
+                                </li>
                             ))}
-                        </div>
-                        <div
-                            className={`rounded-md p-2 mt-1 border ${
-                                exactTotalMatches
-                                    ? "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-900"
-                                    : "bg-orange-50 dark:bg-orange-950 border-orange-200 dark:border-orange-900"
-                            }`}
-                        >
-                            <p
-                                className={`text-sm ${
-                                    exactTotalMatches ? "text-green-800 dark:text-green-200" : "text-orange-800 dark:text-orange-200"
-                                }`}
-                            >
-                                Total: ₹{getExactTotal().toFixed(2)} / ₹{amountNum.toFixed(2)}
-                                {amountNum > 0 && !exactTotalMatches && (
-                                    <span> (₹{(Math.abs(amountPaise - getExactTotalPaise()) / 100).toFixed(2)} remaining)</span>
-                                )}
-                            </p>
-                        </div>
+                        </ul>
+                        {totalLine(
+                            exactTotalMatches,
+                            `${formatRupees(getExactTotal())} of ${formatRupees(amountNum)}` +
+                                (amountNum > 0 && !exactTotalMatches
+                                    ? ` · ${formatRupees((amountPaise - getExactTotalPaise()) / 100)} left`
+                                    : "")
+                        )}
                     </>
                 )}
 
                 {splitType === "percentage" && (
                     <>
-                        <p className="text-xs text-muted-foreground">Enter the percentage each person owes:</p>
-                        <div className="space-y-2">
-                            {members.map((member) => (
-                                <div key={member.uid} className="flex items-center gap-2">
-                                    <span className="text-sm text-foreground min-w-[100px] truncate">
-                                        {member.name}
-                                        {member.uid === currentUserId ? " (You)" : ""}
-                                    </span>
-                                    <div className="flex items-center flex-1">
+                        <ul className="flex flex-col gap-2">
+                            {members.map((member) => {
+                                const pct = parseFloat(percentages[member.uid] || "0");
+                                return (
+                                    <li key={member.uid} className="flex items-center gap-3">
+                                        <label
+                                            htmlFor={`percent-${member.uid}`}
+                                            className="min-w-24 truncate text-[15px] text-foreground"
+                                        >
+                                            {nameOf(member)}
+                                        </label>
                                         <input
+                                            id={`percent-${member.uid}`}
                                             type="number"
+                                            inputMode="decimal"
                                             value={percentages[member.uid] || ""}
                                             onChange={(e) =>
                                                 setPercentages({ ...percentages, [member.uid]: e.target.value })
                                             }
-                                            placeholder="0"
+                                            placeholder="0%"
                                             step="0.01"
                                             min="0"
                                             max="100"
-                                            className="w-full px-2 py-1.5 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-foreground text-sm"
+                                            className={`${fieldClass} h-11 font-mono`}
                                             disabled={loading}
                                         />
-                                        <span className="text-muted-foreground ml-1">%</span>
-                                    </div>
-                                    {amountNum > 0 && parseFloat(percentages[member.uid] || "0") > 0 && (
-                                        <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                            = ₹{((amountNum * parseFloat(percentages[member.uid] || "0")) / 100).toFixed(2)}
+                                        <span className="w-20 shrink-0 text-right font-mono text-xs text-subtle">
+                                            {amountNum > 0 && pct > 0 ? formatRupees((amountNum * pct) / 100) : ""}
                                         </span>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                        <div
-                            className={`rounded-md p-2 mt-1 border ${
-                                percentageTotalMatches
-                                    ? "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-900"
-                                    : "bg-orange-50 dark:bg-orange-950 border-orange-200 dark:border-orange-900"
-                            }`}
-                        >
-                            <p
-                                className={`text-sm ${
-                                    percentageTotalMatches ? "text-green-800 dark:text-green-200" : "text-orange-800 dark:text-orange-200"
-                                }`}
-                            >
-                                Total: {getPercentageTotal()}% / 100%
-                                {!percentageTotalMatches && (
-                                    <span> ({Math.abs(100 - getPercentageTotal()).toFixed(2)}% remaining)</span>
-                                )}
-                            </p>
-                        </div>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                        {totalLine(
+                            percentageTotalMatches,
+                            `${getPercentageTotal()}% of 100%` +
+                                (!percentageTotalMatches
+                                    ? ` · ${Math.abs(100 - getPercentageTotal()).toFixed(2)}% left`
+                                    : "")
+                        )}
                     </>
                 )}
-            </div>
+            </fieldset>
 
-            {/* Error Message */}
-            {error && (
-                <div className="text-red-600 dark:text-red-400 text-sm bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-900 rounded-md p-2">
-                    {error}
-                </div>
-            )}
+            {error && <p className="text-sm text-negative">{error}</p>}
 
-            {/* Submit Button */}
-            <button
-                type="submit"
-                disabled={loading}
-                className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-            >
-                {loading
-                    ? isEditing
-                        ? "Saving..."
-                        : "Adding..."
-                    : isEditing
-                      ? "Save Changes"
-                      : "Add Expense"}
+            <button type="submit" disabled={loading} className={buttonClass(true)}>
+                <span>
+                    {loading
+                        ? isEditing
+                            ? "saving…"
+                            : "adding…"
+                        : isEditing
+                          ? "save changes"
+                          : "add expense"}
+                </span>
+                <span className="text-muted-foreground" aria-hidden="true">
+                    →
+                </span>
             </button>
         </form>
     );

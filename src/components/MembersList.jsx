@@ -4,6 +4,7 @@ import { removeMemberFromGroup } from "@/lib/groups";
 import { useToast } from "@/context/ToastContext";
 import ConfirmModal from "./ConfirmModal";
 import { useState } from "react";
+import { formatRupees } from "@/components/ui/kit";
 
 /**
  * @param {Object} props
@@ -36,8 +37,8 @@ export default function MembersList({
         const balance = balanceByUid.get(uid) ?? 0;
         if (balance === 0) return null;
         return balance > 0
-            ? `Owed ₹${balance.toFixed(2)} — settle up before removing`
-            : `Owes ₹${Math.abs(balance).toFixed(2)} — settle up before removing`;
+            ? `gets back ${formatRupees(balance)}, settle up first`
+            : `needs to pay ${formatRupees(balance)}, settle up first`;
     };
 
     const handleRemoveMember = async (member) => {
@@ -47,7 +48,7 @@ export default function MembersList({
         try {
             await removeMemberFromGroup(groupId, member.uid, currentUserId);
         } catch (error) {
-            showToast(error.message || "Failed to remove member");
+            showToast(error.message || "couldn't remove them");
         } finally {
             setRemoving(null);
         }
@@ -55,69 +56,70 @@ export default function MembersList({
 
     return (
         <>
-            <div className="space-y-3">
-                {members.map((member) => (
-                    <div
-                        key={member.uid}
-                        className="flex items-center justify-between p-3 bg-muted rounded-lg"
-                    >
-                        <div className="flex items-center gap-3">
-                            {member.photoURL ? (
-                                <img
-                                    src={member.photoURL}
-                                    alt={member.name}
-                                    className="w-10 h-10 rounded-full"
-                                />
-                            ) : (
-                                <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold">
-                                    {member.name.charAt(0).toUpperCase()}
-                                </div>
-                            )}
-                            <div>
-                                <div className="font-medium text-foreground">
-                                    {member.name}
-                                    {member.uid === adminId && (
-                                        <span className="ml-2 text-xs bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded">
-                                            Admin
-                                        </span>
+            <ul className="flex flex-col" aria-label="people">
+                {members.map((member) => {
+                    const isYou = member.uid === currentUserId;
+                    const blocked = settleFirst(member.uid);
+                    return (
+                        <li
+                            key={member.uid}
+                            className="flex min-h-14 items-center justify-between gap-3 border-b border-hairline py-2"
+                        >
+                            <div className="flex min-w-0 items-center gap-3">
+                                {member.photoURL ? (
+                                    <img
+                                        src={member.photoURL}
+                                        alt=""
+                                        className="h-8 w-8 rounded-full"
+                                    />
+                                ) : (
+                                    <span
+                                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border font-mono text-xs text-foreground"
+                                        aria-hidden="true"
+                                    >
+                                        {member.name.charAt(0).toLowerCase()}
+                                    </span>
+                                )}
+                                <div className="min-w-0">
+                                    <p className="truncate text-[15px] text-foreground">
+                                        {isYou ? `${member.name} (you)` : member.name}
+                                        {member.uid === adminId && (
+                                            <span className="ml-2 font-mono text-xs text-subtle">admin</span>
+                                        )}
+                                    </p>
+                                    {isYou && currentUserEmail && (
+                                        <p className="truncate text-[13px] text-subtle">{currentUserEmail}</p>
+                                    )}
+                                    {isAdmin && !isYou && blocked && (
+                                        <p className="text-[13px] text-subtle">{blocked}</p>
                                     )}
                                 </div>
-                                {member.uid === currentUserId && currentUserEmail && (
-                                    <div className="text-sm text-muted-foreground">{currentUserEmail}</div>
-                                )}
                             </div>
-                        </div>
 
-                        {isAdmin && member.uid !== adminId && (
-                            <div className="text-right">
+                            {isAdmin && member.uid !== adminId && (
                                 <button
+                                    type="button"
                                     onClick={() => setPendingRemoval(member)}
-                                    disabled={removing === member.uid || settleFirst(member.uid) !== null}
-                                    title={settleFirst(member.uid) ?? undefined}
-                                    className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-sm font-medium disabled:text-muted-foreground disabled:cursor-not-allowed"
+                                    disabled={removing === member.uid || blocked !== null}
+                                    className="h-11 shrink-0 px-1 font-mono text-[13px] text-negative transition-opacity hover:opacity-80 disabled:text-subtle disabled:opacity-60"
                                 >
-                                    {removing === member.uid ? "Removing..." : "Remove"}
+                                    {removing === member.uid ? "removing…" : "remove"}
                                 </button>
-                                {settleFirst(member.uid) && (
-                                    <div className="text-xs text-muted-foreground mt-0.5">
-                                        Settle up first
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                ))}
-            </div>
+                            )}
+                        </li>
+                    );
+                })}
+            </ul>
 
             <ConfirmModal
                 isOpen={pendingRemoval !== null}
-                title="Remove member"
+                title="remove from group?"
                 message={
                     pendingRemoval
-                        ? `Remove ${pendingRemoval.name} from the group? They keep their place in the expense history, so past splits stay as they are.`
+                        ? `${pendingRemoval.name} will leave the group. they keep their place in the expense history, so past splits stay as they are.`
                         : ""
                 }
-                confirmText="Remove"
+                confirmText="remove"
                 onConfirm={() => pendingRemoval && handleRemoveMember(pendingRemoval)}
                 onCancel={() => setPendingRemoval(null)}
                 danger

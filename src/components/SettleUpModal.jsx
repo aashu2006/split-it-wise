@@ -9,6 +9,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { buttonClass, fieldClass, formatRupees, labelClass } from "@/components/ui/kit";
 
 /**
  * @param {Object} props
@@ -34,8 +35,9 @@ export default function SettleUpModal({
     // below is unconditionally open.
     if (!transfer) return null;
 
-    const payer = members.find((m) => m.uid === transfer.from);
-    const payee = members.find((m) => m.uid === transfer.to);
+    const nameFor = (uid) =>
+        uid === currentUserId ? "you" : members.find((m) => m.uid === uid)?.name || "someone";
+    const payeeName = nameFor(transfer.to);
     const isPayer = currentUserId === transfer.from;
 
     // Default to clearing the whole debt, but allow a part payment.
@@ -45,11 +47,11 @@ export default function SettleUpModal({
         setError("");
 
         if (amountNum <= 0) {
-            setError("Enter an amount greater than 0");
+            setError("enter an amount above ₹0");
             return;
         }
         if (amountNum > transfer.amount) {
-            setError(`That's more than the ₹${transfer.amount.toFixed(2)} owed`);
+            setError(`that's more than the ${formatRupees(transfer.amount)} to pay`);
             return;
         }
 
@@ -65,7 +67,7 @@ export default function SettleUpModal({
             setAmount("");
             onClose();
         } catch (err) {
-            setError(err.message || "Failed to record the payment");
+            setError(err.message || "couldn't record the payment");
         } finally {
             setLoading(false);
         }
@@ -73,65 +75,65 @@ export default function SettleUpModal({
 
     return (
         <Dialog open onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="sm:max-w-md p-6 max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-h-[90dvh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle className="text-2xl font-bold text-foreground">
-                        Settle up
-                    </DialogTitle>
-                    <DialogDescription className="text-foreground">
-                        <span className="font-medium">{isPayer ? "You" : payer?.name}</span>
-                        {isPayer ? " pay " : " pays "}
-                        <span className="font-medium">{payee?.name}</span>
+                    <DialogTitle>mark as paid</DialogTitle>
+                    <DialogDescription className="text-[15px] text-foreground">
+                        {nameFor(transfer.from)} <span className="text-subtle" aria-label="pays">→</span>{" "}
+                        {payeeName}
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="mb-4">
-                    <label htmlFor="settle-amount" className="block text-sm font-medium text-foreground mb-1">
-                        Amount (₹)
+                <div className="flex flex-col gap-2">
+                    <label htmlFor="settle-amount" className={labelClass}>
+                        amount (₹)
                     </label>
                     <input
                         type="number"
                         id="settle-amount"
+                        inputMode="decimal"
                         value={amount}
                         onChange={(e) => setAmount(e.target.value)}
                         placeholder={transfer.amount.toFixed(2)}
                         step="0.01"
                         min="0"
                         max={transfer.amount}
-                        className="w-full px-4 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-foreground"
+                        className={`${fieldClass} font-mono`}
                         disabled={loading}
                     />
-                    <p className="text-xs text-muted-foreground mt-1">
-                        Leave blank to settle the full ₹{transfer.amount.toFixed(2)}
+                    <p className="text-[13px] text-subtle">
+                        leave it blank to clear the full {formatRupees(transfer.amount)}, or enter less
+                        for a part payment.
                     </p>
                 </div>
 
                 {/* The money moves outside the app, however the two of them
                     usually pay each other; this only records that it happened. */}
                 {isPayer && (
-                    <p className="text-sm text-muted-foreground bg-muted border border-border rounded-md p-2 mb-2">
-                        Pay {payee?.name} however you normally would (cash, UPI, bank
-                        transfer), then record it here.
+                    <p className="text-[13px] leading-relaxed text-muted-foreground">
+                        pay {payeeName} however you usually do (cash, upi, bank transfer), then
+                        record it here.
                     </p>
                 )}
 
-                {error && (
-                    <div className="text-red-600 dark:text-red-400 text-sm bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-900 rounded-md p-2 mb-2">
-                        {error}
-                    </div>
-                )}
+                {error && <p className="text-sm text-negative">{error}</p>}
 
-                <button
-                    onClick={handleRecord}
-                    disabled={loading}
-                    className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-                >
-                    {loading ? "Recording..." : "Mark as paid"}
-                </button>
-
-                <p className="text-xs text-muted-foreground mt-2 text-center">
-                    Only record it once the money has actually moved.
-                </p>
+                <div className="flex flex-col gap-2">
+                    <button
+                        type="button"
+                        onClick={handleRecord}
+                        disabled={loading}
+                        className={buttonClass(true)}
+                    >
+                        <span>{loading ? "recording…" : "mark as paid"}</span>
+                        <span className="text-muted-foreground" aria-hidden="true">
+                            →
+                        </span>
+                    </button>
+                    <p className="text-center font-mono text-xs text-subtle">
+                        only once the money has actually moved.
+                    </p>
+                </div>
             </DialogContent>
         </Dialog>
     );

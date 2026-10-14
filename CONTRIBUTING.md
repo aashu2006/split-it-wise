@@ -59,7 +59,7 @@ npm run dev
 
 With no `.env.local`, the app starts in **demo mode**. Click *Continue with Google* and
 you're signed in as a sample account with two groups, expenses in all three split types,
-a recorded repayment, and a former member who still owes money. That's enough to reach
+a recorded repayment, and a former member who still has money to get back. That's enough to reach
 every screen. You're admin of one group and not the other, so admin-only controls are
 reachable both ways. Data lives in memory and resets on reload; nothing leaves your
 machine. The fixtures live in [`src/lib/demo.js`](src/lib/demo.js).

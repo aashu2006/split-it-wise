@@ -4,8 +4,11 @@ import { useState } from "react";
 import { deleteSettlement } from "@/lib/settlements";
 import { useToast } from "@/context/ToastContext";
 import ConfirmModal from "./ConfirmModal";
+import { formatRupees, labelClass, smallButtonClass } from "@/components/ui/kit";
 
 /**
+ * Who pays whom to clear the group, and the payments already recorded.
+ *
  * @param {Object} props
  * @param {import("@/types").Transfer[]} props.transfers
  * @param {import("@/types").Settlement[]} props.settlements
@@ -29,7 +32,7 @@ export default function SettleUp({
     const { showToast } = useToast();
 
     const nameFor = (uid) =>
-        members.find((m) => m.uid === uid)?.name || "Someone who left";
+        uid === currentUserId ? "you" : members.find((m) => m.uid === uid)?.name || "someone who left";
 
     const handleDelete = async (settlement) => {
         setPendingUndo(null);
@@ -38,106 +41,91 @@ export default function SettleUp({
         try {
             await deleteSettlement(settlement.id, groupId, currentUserId);
         } catch (error) {
-            showToast(error.message || "Failed to undo the payment");
+            showToast(error.message || "couldn't undo the payment");
         } finally {
             setDeleting(null);
         }
     };
 
+    // Matches firestore.rules: whoever logged it, either side of the payment,
+    // or the admin.
+    const canUndo = (settlement) =>
+        isAdmin ||
+        [settlement.createdBy, settlement.from, settlement.to].includes(currentUserId);
+
     return (
         <>
-            <div className="space-y-4">
-                {transfers.length === 0 ? (
-                    <div className="text-center py-6 text-muted-foreground">
-                        Everyone is settled up 🎉
-                    </div>
-                ) : (
-                    <div className="space-y-2">
-                        {transfers.map((transfer) => {
-                            // Anyone can record a payment they witnessed, but the person
-                            // actually out of pocket gets the primary action.
-                            const isPayer = transfer.from === currentUserId;
+            {transfers.length === 0 ? (
+                <p className="text-[15px] text-muted-foreground">everyone is settled up.</p>
+            ) : (
+                <ul className="flex flex-col gap-2" aria-label="payments to make">
+                    {transfers.map((transfer) => (
+                        <li
+                            key={`${transfer.from}-${transfer.to}`}
+                            className="flex items-center justify-between gap-3"
+                        >
+                            <span className="text-[15px] text-foreground">
+                                {nameFor(transfer.from)}{" "}
+                                <span className="text-subtle" aria-label="pays">
+                                    →
+                                </span>{" "}
+                                {nameFor(transfer.to)}{" "}
+                                <span className="font-mono">{formatRupees(transfer.amount)}</span>
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => onSettle(transfer)}
+                                className={smallButtonClass}
+                            >
+                                mark paid
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+            )}
 
-                            return (
-                                <div
-                                    key={`${transfer.from}-${transfer.to}`}
-                                    className="flex items-center justify-between gap-3 p-3 bg-muted border border-border rounded-lg"
-                                >
-                                    <div className="text-sm text-foreground">
-                                        <span className="font-medium">
-                                            {isPayer ? "You" : nameFor(transfer.from)}
-                                        </span>
-                                        <span className="text-muted-foreground">
-                                            {isPayer ? " pay " : " pays "}
-                                        </span>
-                                        <span className="font-medium">
-                                            {transfer.to === currentUserId ? "you" : nameFor(transfer.to)}
-                                        </span>
-                                        <span className="font-semibold"> ₹{transfer.amount.toFixed(2)}</span>
-                                    </div>
-
+            {settlements.length > 0 && (
+                <div className="mt-6">
+                    <p className={labelClass}>recorded payments</p>
+                    <ul className="mt-2" aria-label="recorded payments">
+                        {settlements.map((settlement) => (
+                            <li
+                                key={settlement.id}
+                                className="flex min-h-11 items-center justify-between gap-3 text-sm text-muted-foreground"
+                            >
+                                <span>
+                                    {nameFor(settlement.from)} paid {nameFor(settlement.to)}{" "}
+                                    <span className="font-mono text-foreground">
+                                        {formatRupees(settlement.amount)}
+                                    </span>
+                                </span>
+                                {canUndo(settlement) && (
                                     <button
-                                        onClick={() => onSettle(transfer)}
-                                        className={`px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap ${
-                                            isPayer
-                                                ? "bg-green-600 text-white hover:bg-green-700"
-                                                : "border border-input text-foreground hover:bg-muted"
-                                        }`}
+                                        type="button"
+                                        onClick={() => setPendingUndo(settlement)}
+                                        disabled={deleting === settlement.id}
+                                        className="h-11 px-1 font-mono text-[13px] text-subtle transition-colors hover:text-foreground disabled:opacity-50"
                                     >
-                                        {isPayer ? "Settle up" : "Mark paid"}
+                                        {deleting === settlement.id ? "…" : "undo"}
                                     </button>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
-
-                {settlements.length > 0 && (
-                    <div className="pt-3 border-t border-border">
-                        <h3 className="text-sm font-medium text-foreground mb-2">Payments made</h3>
-                        <div className="space-y-1">
-                            {settlements.map((settlement) => {
-                                const canDelete = settlement.createdBy === currentUserId || isAdmin;
-
-                                return (
-                                    <div
-                                        key={settlement.id}
-                                        className="flex items-center justify-between gap-3 text-sm text-muted-foreground py-1"
-                                    >
-                                        <span>
-                                            {nameFor(settlement.from)} paid {nameFor(settlement.to)}{" "}
-                                            <span className="font-medium text-foreground">
-                                                ₹{settlement.amount.toFixed(2)}
-                                            </span>
-                                        </span>
-                                        {canDelete && (
-                                            <button
-                                                onClick={() => setPendingUndo(settlement)}
-                                                disabled={deleting === settlement.id}
-                                                className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-xs font-medium disabled:opacity-50"
-                                            >
-                                                {deleting === settlement.id ? "..." : "Undo"}
-                                            </button>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
-            </div>
+                                )}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
 
             <ConfirmModal
                 isOpen={pendingUndo !== null}
-                title="Undo this payment?"
+                title="undo this payment?"
                 message={
                     pendingUndo
-                        ? `This removes the record that ${nameFor(pendingUndo.from)} paid ${nameFor(
+                        ? `this removes the record that ${nameFor(pendingUndo.from)} paid ${nameFor(
                               pendingUndo.to
-                          )} ₹${pendingUndo.amount.toFixed(2)}, so the debt comes back.`
+                          )} ${formatRupees(pendingUndo.amount)}, so it shows as unpaid again.`
                         : ""
                 }
-                confirmText="Undo payment"
+                confirmText="undo payment"
                 onConfirm={() => pendingUndo && handleDelete(pendingUndo)}
                 onCancel={() => setPendingUndo(null)}
                 danger
