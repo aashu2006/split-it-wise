@@ -98,10 +98,18 @@ npm run lint        # ESLint; keep it at zero errors
 npm test            # unit tests: splitting, balances, demo mode
 npm run build       # production build
 npm run test:rules  # security rules, against the Firestore emulator
+npm run test:e2e    # the app in a real browser, desktop and phone
 ```
 
 `test:rules` needs Java 21+ (`java -version`), and starts and stops the emulator itself.
-There's no type checker in this project, so these four are the whole safety net. Run
+
+`test:e2e` builds the app in demo mode (even if you have a `.env.local`, so it never
+touches a real project) and clicks through it with Playwright: adding, editing and
+deleting expenses, settling up, group admin. Run `npx playwright install chromium`
+once first. Add `--ui` to watch the tests run, and if a change alters the UI, update
+the matching spec in [`tests/e2e/`](tests/e2e).
+
+There's no type checker in this project, so these checks are the whole safety net. Run
 them before you push.
 
 ## Writing code that fits
@@ -166,6 +174,7 @@ src/
 └── types/                  Data shapes, as JSDoc typedefs
 
 tests/rules/                Security rules tests (Firestore emulator)
+tests/e2e/                  End-to-end tests (Playwright, demo mode)
 scripts/                    One-off admin scripts, maintainer only
 firestore.rules             Server-side permissions: the real security boundary
 firestore.indexes.json      Composite indexes
@@ -173,7 +182,6 @@ firestore.indexes.json      Composite indexes
 
 ## Where help is wanted
 
-- **Component tests.** Only the maths, demo mode and security rules are tested today.
 - **`next/image` for avatars** in `MembersList`. Needs a `remotePatterns` entry for
   `googleusercontent.com`, and clears the last lint warning.
 - **Expense categories and filtering.**

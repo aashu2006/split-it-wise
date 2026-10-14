@@ -46,6 +46,9 @@ const securityHeaders = [
 
 /** @type {import("next").NextConfig} */
 const nextConfig = {
+    // The end-to-end tests build a demo-mode copy of the app into its own
+    // folder (see playwright.config.mjs), so it can't clobber a real build.
+    distDir: process.env.NEXT_DIST_DIR || ".next",
     // No "X-Powered-By: Next.js": it tells a visitor nothing they need, and
     // tells a scanner which framework's advisories to try.
     poweredByHeader: false,
