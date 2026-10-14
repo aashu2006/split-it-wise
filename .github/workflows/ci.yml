@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # The Firestore emulator behind the rules tests runs on Java.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - run: npm ci
+
+      - run: npm run lint
+
+      - run: npm test
+
+      # No Firebase config here, so this builds the demo-mode app — enough to
+      # catch anything that breaks the build.
+      - run: npm run build
+
+      - run: npm run test:rules
