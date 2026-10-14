@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { addSettlement } from "@/lib/settlements";
-import { buildUpiLink } from "@/lib/upi";
 import {
     Dialog,
     DialogContent,
@@ -17,7 +16,6 @@ import {
  * @param {import("@/types").User[]} props.members
  * @param {string} props.currentUserId
  * @param {string} props.groupId
- * @param {string} props.groupName
  * @param {() => void} props.onClose
  */
 export default function SettleUpModal({
@@ -25,7 +23,6 @@ export default function SettleUpModal({
     members,
     currentUserId,
     groupId,
-    groupName,
     onClose,
 }) {
     const [amount, setAmount] = useState("");
@@ -43,10 +40,6 @@ export default function SettleUpModal({
 
     // Default to clearing the whole debt, but allow a part payment.
     const amountNum = amount === "" ? transfer.amount : parseFloat(amount) || 0;
-    const upiLink =
-        payee?.upiId && amountNum > 0
-            ? buildUpiLink(payee.upiId, payee.name, amountNum, `${groupName} settle up`)
-            : null;
 
     const handleRecord = async () => {
         setError("");
@@ -113,21 +106,12 @@ export default function SettleUpModal({
                     </p>
                 </div>
 
-                {/* Paying happens outside the app, so the UPI link and the record
-                    button are deliberately two separate steps. */}
-                {isPayer && upiLink && (
-                    <a
-                        href={upiLink}
-                        className="block w-full text-center px-4 py-2 mb-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
-                    >
-                        Pay ₹{amountNum.toFixed(2)} via UPI
-                    </a>
-                )}
-
-                {isPayer && !payee?.upiId && (
+                {/* The money moves outside the app, however the two of them
+                    usually pay each other; this only records that it happened. */}
+                {isPayer && (
                     <p className="text-sm text-muted-foreground bg-muted border border-border rounded-md p-2 mb-2">
-                        {payee?.name} hasn&apos;t added a UPI ID yet, so pay them however you
-                        normally would and record it here.
+                        Pay {payee?.name} however you normally would (cash, UPI, bank
+                        transfer), then record it here.
                     </p>
                 )}
 

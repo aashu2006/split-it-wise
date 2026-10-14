@@ -44,4 +44,4 @@ body:
     id: extra
     attributes:
       label: Screenshots or anything else
-      description: Please blur names, amounts or UPI IDs you don't want to share publicly.
+      description: Please blur names or amounts you don't want to share publicly.

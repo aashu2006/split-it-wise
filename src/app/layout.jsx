@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 
 const SITE_URL = "https://split-it-wise.vercel.app";
 const DESCRIPTION =
-  "Split bills with friends, see who owes whom, and settle up over UPI. Free, no ads, open source.";
+  "Split bills with friends, see who owes whom, and settle up in the fewest payments. Free, no ads, open source.";
 
 // Icons, the link-preview image and the manifest come from the file
 // conventions next to this layout (icon.svg, apple-icon.png,
@@ -24,7 +24,7 @@ const DESCRIPTION =
 export const metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Split-It-Wise · Split bills, settle up over UPI",
+    default: "Split-It-Wise · Split bills with friends",
     template: "%s · Split-It-Wise",
   },
   description: DESCRIPTION,
@@ -34,7 +34,7 @@ export const metadata = {
     "expense splitting",
     "split bills",
     "splitwise alternative",
-    "UPI",
+    "settle up",
     "group expenses",
     "students",
   ],

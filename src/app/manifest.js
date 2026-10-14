@@ -4,7 +4,7 @@ export default function manifest() {
     return {
         name: "Split-It-Wise",
         short_name: "Split-It-Wise",
-        description: "Split bills with friends and settle up over UPI.",
+        description: "Split bills with friends and see who owes whom.",
         start_url: "/",
         display: "standalone",
         background_color: "#ffffff",

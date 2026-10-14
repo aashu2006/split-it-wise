@@ -4,7 +4,7 @@
 
 # Split-It-Wise
 
-**Owed or owing? Split bills with friends and settle up over UPI.**
+**Owed or owing? Split bills with friends and see exactly who pays whom.**
 
 Built for hostel rooms, road trips and chai runs. Free, no ads, no trackers.
 
@@ -42,8 +42,7 @@ Built for hostel rooms, road trips and chai runs. Free, no ads, no trackers.
 
 **Settling up**
 - Balances are simplified into the fewest payments: *"Rahul pays Akshat ₹300"*
-- One-tap UPI links open GPay, PhonePe or Paytm with the amount filled in
-- Record full or partial repayments, and undo one logged by mistake
+- Pay however you usually do, then mark it paid; part payments and undo included
 
 ## Getting it right with money
 
@@ -61,8 +60,8 @@ Built for hostel rooms, road trips and chai runs. Free, no ads, no trackers.
 - **Every permission is enforced on the server** by [Firestore security rules](firestore.rules):
   only members can see a group's expenses, and only the right people can change them.
   The rules have their own [test suite](tests/rules) that runs on every pull request.
-- **Your email stays private.** Other members see your name, photo and (if you add one)
-  your UPI ID. Your email is never stored where they can read it.
+- **Your email stays private.** Other members see only your name and photo. Your email
+  is never stored where they can read it.
 - **Private pages stay out of search engines.** Group and invite pages are never indexed.
 - **No ads, no analytics, no trackers.**
 

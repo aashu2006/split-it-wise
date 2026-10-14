@@ -152,15 +152,6 @@ export default function GroupDashboard() {
         [expenses, group, settlements]
     );
 
-    // Profiles are fetched rather than listened to, so a saved UPI ID is
-    // patched in by hand.
-    const handleProfileUpdated = (upiId) =>
-        setLedgerProfiles((current) =>
-            current?.map((profile) =>
-                profile.uid === uid ? { ...profile, upiId } : profile
-            )
-        );
-
     const copyInviteLink = async () => {
         const inviteLink = `${window.location.origin}/join/${groupId}`;
 
@@ -492,7 +483,6 @@ export default function GroupDashboard() {
                         currentUserId={user?.uid || ""}
                         currentUserEmail={user?.email || ""}
                         groupId={groupId}
-                        onProfileUpdated={handleProfileUpdated}
                     />
                 </div>
             </main>
@@ -516,7 +506,6 @@ export default function GroupDashboard() {
                 members={ledgerProfiles}
                 currentUserId={user?.uid || ""}
                 groupId={groupId}
-                groupName={group.name}
                 onClose={() => setSettlingTransfer(null)}
             />
 

@@ -1,87 +1,9 @@
 "use client";
 
 import { removeMemberFromGroup } from "@/lib/groups";
-import { saveUpiId } from "@/lib/user";
 import { useToast } from "@/context/ToastContext";
 import ConfirmModal from "./ConfirmModal";
 import { useState } from "react";
-
-/**
- * Inline editor for your own UPI ID. Lives here rather than on a settings page
- * because this is where you see everyone else's, which is what prompts you to
- * add your own.
- *
- * @param {Object} props
- * @param {string} props.currentUserId
- * @param {string} [props.upiId]
- * @param {(upiId: string) => void} props.onSaved
- */
-function UpiIdField({ currentUserId, upiId, onSaved }) {
-    const [editing, setEditing] = useState(false);
-    const [value, setValue] = useState(upiId || "");
-    const [saving, setSaving] = useState(false);
-    const [error, setError] = useState("");
-
-    const handleSave = async () => {
-        setError("");
-        setSaving(true);
-        try {
-            const saved = value.trim();
-            await saveUpiId(currentUserId, saved);
-            setEditing(false);
-            onSaved(saved);
-        } catch (err) {
-            setError(err.message || "Failed to save");
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    if (!editing) {
-        return (
-            <button
-                onClick={() => setEditing(true)}
-                className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 mt-0.5"
-            >
-                {upiId ? `UPI: ${upiId} (edit)` : "+ Add your UPI ID"}
-            </button>
-        );
-    }
-
-    return (
-        <div className="mt-1">
-            <div className="flex items-center gap-1">
-                <input
-                    type="text"
-                    value={value}
-                    onChange={(e) => setValue(e.target.value)}
-                    placeholder="name@okhdfcbank"
-                    className="px-2 py-1 border border-input rounded text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    disabled={saving}
-                    autoFocus
-                />
-                <button
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium disabled:opacity-50"
-                >
-                    {saving ? "..." : "Save"}
-                </button>
-                <button
-                    onClick={() => {
-                        setEditing(false);
-                        setValue(upiId || "");
-                        setError("");
-                    }}
-                    className="text-xs text-muted-foreground hover:text-foreground"
-                >
-                    Cancel
-                </button>
-            </div>
-            {error && <div className="text-xs text-red-600 dark:text-red-400 mt-0.5">{error}</div>}
-        </div>
-    );
-}
 
 /**
  * @param {Object} props
@@ -92,8 +14,6 @@ function UpiIdField({ currentUserId, upiId, onSaved }) {
  * @param {string} [props.currentUserEmail]
  *   From Firebase Auth. Profiles don't store emails, and only your own is shown.
  * @param {string} props.groupId
- * @param {(upiId: string) => void} props.onProfileUpdated
- *   Passed the saved value so the caller can patch its own profile copy.
  */
 export default function MembersList({
     members,
@@ -102,7 +22,6 @@ export default function MembersList({
     currentUserId,
     currentUserEmail,
     groupId,
-    onProfileUpdated,
 }) {
     const [removing, setRemoving] = useState(null);
     const [pendingRemoval, setPendingRemoval] = useState(null);
@@ -165,19 +84,6 @@ export default function MembersList({
                                 </div>
                                 {member.uid === currentUserId && currentUserEmail && (
                                     <div className="text-sm text-muted-foreground">{currentUserEmail}</div>
-                                )}
-                                {member.uid === currentUserId ? (
-                                    <UpiIdField
-                                        currentUserId={currentUserId}
-                                        upiId={member.upiId}
-                                        onSaved={onProfileUpdated}
-                                    />
-                                ) : (
-                                    member.upiId && (
-                                        <div className="text-xs text-muted-foreground mt-0.5">
-                                            UPI: {member.upiId}
-                                        </div>
-                                    )
                                 )}
                             </div>
                         </div>
