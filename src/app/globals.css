@@ -103,15 +103,27 @@
    * Tailwind v4 dropped the pointer cursor from buttons, so nothing clickable
    * looked clickable. Restored once here rather than on every button.
    */
+  a[href],
   button:not(:disabled),
+  select:not(:disabled),
+  summary,
+  label[for],
+  label:has(input:not(:disabled)),
+  input:is([type="checkbox"], [type="radio"], [type="button"], [type="submit"],
+    [type="reset"], [type="file"], [type="color"], [type="range"]):not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
   [role="tab"],
-  label[for],
-  select:not(:disabled),
-  summary {
+  [role="menuitem"],
+  [role="menuitemcheckbox"],
+  [role="menuitemradio"],
+  [role="option"],
+  [role="switch"],
+  [role="checkbox"],
+  [role="link"] {
     cursor: pointer;
   }
-  button:disabled {
+  :is(button, select, input):disabled,
+  [aria-disabled="true"] {
     cursor: not-allowed;
   }
   /* No spin arrows on amount fields: they're tiny, nobody steps a price up a
