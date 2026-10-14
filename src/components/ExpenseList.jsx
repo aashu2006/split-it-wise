@@ -8,7 +8,10 @@ import { useState } from "react";
 /**
  * @param {Object} props
  * @param {import("@/types").Expense[]} props.expenses
- * @param {import("@/types").User[]} props.members
+ * @param {import("@/types").User[]} props.members - Current members
+ * @param {import("@/types").User[]} props.profiles
+ *   Everyone in the ledger, including people who have left, so an expense
+ *   they paid for can still say who paid.
  * @param {string} props.currentUserId
  * @param {string} props.groupId
  * @param {boolean} props.isAdmin
@@ -17,6 +20,7 @@ import { useState } from "react";
 export default function ExpenseList({
     expenses,
     members,
+    profiles,
     currentUserId,
     groupId,
     isAdmin,
@@ -27,7 +31,8 @@ export default function ExpenseList({
     const { showToast } = useToast();
 
     // Create a map of uid to user for quick lookup
-    const userMap = new Map(members.map((m) => [m.uid, m]));
+    const userMap = new Map(profiles.map((p) => [p.uid, p]));
+    const currentUids = new Set(members.map((m) => m.uid));
 
     const formatDate = (timestamp) => {
         if (!timestamp) return "";
@@ -115,8 +120,9 @@ export default function ExpenseList({
                                         )}
                                     </div>
                                     <div className="text-sm text-muted-foreground">
-                                        Paid by <span className="font-medium">{payer?.name || "Unknown"}</span>
+                                        Paid by <span className="font-medium">{payer?.name || "Someone who left"}</span>
                                         {expense.paidBy === currentUserId && " (You)"}
+                                        {payer && !currentUids.has(expense.paidBy) && " (left group)"}
                                     </div>
                                     <div className="text-xs text-muted-foreground mt-1">
                                         {formatDate(expense.createdAt)} • {splitLabel} split • {splitSummary}

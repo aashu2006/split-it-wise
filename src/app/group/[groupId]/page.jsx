@@ -472,6 +472,7 @@ export default function GroupDashboard() {
                     <ExpenseList
                         expenses={expenses}
                         members={members}
+                        profiles={ledgerProfiles}
                         currentUserId={user?.uid || ""}
                         groupId={groupId}
                         isAdmin={isAdmin}
