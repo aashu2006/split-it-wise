@@ -79,6 +79,40 @@ export const splitByPercentage = (amount, percentages) => {
 };
 
 /**
+ * Recover the percentages behind a percentage split, for editing an expense
+ * saved before the percentages themselves were stored.
+ *
+ * Only the rupee shares survive, so this is a reconstruction: each share is
+ * expressed in hundredths of a percent and the rounding is settled by the same
+ * largest-remainder method as splitByPercentage, so the result always adds up
+ * to exactly 100. Feeding it back into splitByPercentage can move a share by a
+ * paisa, which is why stored percentages are preferred when they exist.
+ *
+ * @param {number} amount - Total amount in INR
+ * @param {Object<string, number>} splits - Map of uid to amount owed
+ * @returns {Object<string, number>} Map of uid to percentage, to 2 decimal places
+ */
+export const percentagesFromSplits = (amount, splits) => {
+    const totalPaise = toPaise(amount);
+    const uids = Object.keys(splits).filter((uid) => toPaise(splits[uid]) > 0);
+    if (totalPaise <= 0 || uids.length === 0) return {};
+
+    const exact = uids.map((uid) => (toPaise(splits[uid]) * 10000) / totalPaise);
+    const basisPoints = exact.map((value) => Math.floor(value));
+
+    const byRemainder = exact
+        .map((value, index) => ({ index, remainder: value - Math.floor(value) }))
+        .sort((a, b) => b.remainder - a.remainder);
+
+    let leftover = 10000 - basisPoints.reduce((sum, bp) => sum + bp, 0);
+    for (let i = 0; leftover > 0; i++, leftover--) {
+        basisPoints[byRemainder[i % byRemainder.length].index] += 1;
+    }
+
+    return Object.fromEntries(uids.map((uid, i) => [uid, basisPoints[i] / 100]));
+};
+
+/**
  * Calculate balance for each member in a group
  * Formula: balance = totalPaid - totalShare
  * Uses stored splits from each expense for accurate per-person shares.

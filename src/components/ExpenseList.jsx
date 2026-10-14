@@ -1,6 +1,6 @@
 "use client";
 
-import { deleteExpense } from "@/lib/expenses";
+import { deleteExpense, involvesOnlyMembers } from "@/lib/expenses";
 import { useToast } from "@/context/ToastContext";
 import ConfirmModal from "./ConfirmModal";
 import { useState } from "react";
@@ -12,6 +12,7 @@ import { useState } from "react";
  * @param {string} props.currentUserId
  * @param {string} props.groupId
  * @param {boolean} props.isAdmin
+ * @param {(expense: import("@/types").Expense) => void} props.onEdit
  */
 export default function ExpenseList({
     expenses,
@@ -19,6 +20,7 @@ export default function ExpenseList({
     currentUserId,
     groupId,
     isAdmin,
+    onEdit,
 }) {
     const [deleting, setDeleting] = useState(null);
     const [pendingDelete, setPendingDelete] = useState(null);
@@ -50,8 +52,21 @@ export default function ExpenseList({
         }
     };
 
-    const canDelete = (expense) => {
+    // Editing and deleting are open to the same people, matching the rules.
+    const canChange = (expense) => {
         return expense.createdBy === currentUserId || isAdmin;
+    };
+
+    const handleEdit = (expense) => {
+        // Explained on tap rather than by hiding the button, so it doesn't look
+        // like editing is simply missing for this one expense.
+        if (!involvesOnlyMembers(expense, members.map((m) => m.uid))) {
+            showToast(
+                "This expense involves someone who has left the group, so it can't be edited. Delete and re-add it if it's wrong."
+            );
+            return;
+        }
+        onEdit(expense);
     };
 
     if (expenses.length === 0) {
@@ -105,17 +120,27 @@ export default function ExpenseList({
                                     </div>
                                     <div className="text-xs text-muted-foreground mt-1">
                                         {formatDate(expense.createdAt)} • {splitLabel} split • {splitSummary}
+                                        {expense.updatedAt && " • edited"}
                                     </div>
                                 </div>
 
-                                {canDelete(expense) && (
-                                    <button
-                                        onClick={() => setPendingDelete(expense)}
-                                        disabled={deleting === expense.id}
-                                        className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-sm font-medium ml-4 disabled:opacity-50"
-                                    >
-                                        {deleting === expense.id ? "..." : "Delete"}
-                                    </button>
+                                {canChange(expense) && (
+                                    <div className="flex items-center gap-4 ml-4">
+                                        <button
+                                            onClick={() => handleEdit(expense)}
+                                            disabled={deleting === expense.id}
+                                            className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium disabled:opacity-50"
+                                        >
+                                            Edit
+                                        </button>
+                                        <button
+                                            onClick={() => setPendingDelete(expense)}
+                                            disabled={deleting === expense.id}
+                                            className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-sm font-medium disabled:opacity-50"
+                                        >
+                                            {deleting === expense.id ? "..." : "Delete"}
+                                        </button>
+                                    </div>
                                 )}
                             </div>
                         </div>

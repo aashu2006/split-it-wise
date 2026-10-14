@@ -3,6 +3,7 @@ import {
     calculateBalancesByUid,
     calculateMemberBalances,
     formatBalance,
+    percentagesFromSplits,
     simplifyDebts,
     splitByPercentage,
     splitEqually,
@@ -75,6 +76,40 @@ describe("splitByPercentage", () => {
 
     it("leaves out anyone on zero percent", () => {
         expect(splitByPercentage(100, { a: 100, b: 0 })).toEqual({ a: 100 });
+    });
+});
+
+describe("percentagesFromSplits", () => {
+    const totalBasisPoints = (pcts) =>
+        Math.round(Object.values(pcts).reduce((a, b) => a + b, 0) * 100);
+
+    it("recovers round percentages exactly", () => {
+        expect(percentagesFromSplits(1500, { a: 450, b: 450, c: 300, d: 300 })).toEqual({
+            a: 30,
+            b: 30,
+            c: 20,
+            d: 20,
+        });
+    });
+
+    // ₹100 three ways is 33.34 / 33.33 / 33.33; the raw ratios don't land on
+    // hundredths of a percent, and rounding each one alone would miss 100.
+    it("always adds up to exactly 100", () => {
+        const pcts = percentagesFromSplits(100, splitEqually(100, ["a", "b", "c"]));
+        expect(totalBasisPoints(pcts)).toBe(10000);
+
+        const odd = percentagesFromSplits(7, { a: 2.33, b: 2.33, c: 2.34 });
+        expect(totalBasisPoints(odd)).toBe(10000);
+    });
+
+    it("round-trips through splitByPercentage", () => {
+        const shares = splitByPercentage(1500, { a: 30, b: 30, c: 20, d: 20 });
+        expect(splitByPercentage(1500, percentagesFromSplits(1500, shares))).toEqual(shares);
+    });
+
+    it("ignores zero shares and an empty amount", () => {
+        expect(percentagesFromSplits(100, { a: 100, b: 0 })).toEqual({ a: 100 });
+        expect(percentagesFromSplits(0, { a: 0 })).toEqual({});
     });
 });
 
