@@ -1,6 +1,6 @@
 # Security Policy
 
-Split-It-Wise handles people's group expenses and who owes whom, so security reports
+Split-It-Wise handles people's group expenses and who pays whom, so security reports
 are taken seriously and are always welcome.
 
 ## Supported versions

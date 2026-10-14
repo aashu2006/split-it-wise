@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useState } from "react";
+import { iconButtonClass } from "@/components/ui/kit";
 
 /** @typedef {"error" | "success"} ToastKind */
 
@@ -54,26 +55,29 @@ export const ToastProvider = ({ children }) => {
         <ToastContext.Provider value={{ showToast }}>
             {children}
 
-            {/* Low on the screen where thumbs are, but clear of the fixed footer
-                on the groups page at every width. */}
+            {/* Low on the screen where thumbs are, but above the fixed action
+                button at the bottom of the groups and group screens. */}
             <div
-                className="fixed inset-x-0 bottom-16 z-[60] flex flex-col items-center gap-2 px-4 sm:items-end"
+                className="pointer-events-none fixed inset-x-0 bottom-24 z-[60] flex flex-col items-center gap-2 px-6"
                 role="status"
                 aria-live="polite"
             >
                 {toasts.map((toast) => (
                     <div
                         key={toast.id}
-                        className={`pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-lg border px-4 py-3 shadow-lg ${
-                            toast.kind === "error"
-                                ? "bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-900 text-red-800 dark:text-red-200"
-                                : "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-900 text-green-800 dark:text-green-200"
-                        }`}
+                        className="pointer-events-auto flex w-full max-w-md items-center gap-3 rounded-md border border-border bg-background py-1 pr-1 pl-4 shadow-lg"
                     >
-                        <span className="flex-1 text-sm">{toast.message}</span>
+                        <span
+                            className={`flex-1 py-2 text-sm ${
+                                toast.kind === "error" ? "text-negative" : "text-foreground"
+                            }`}
+                        >
+                            {toast.message}
+                        </span>
                         <button
+                            type="button"
                             onClick={() => dismiss(toast.id)}
-                            className="text-lg leading-none opacity-60 hover:opacity-100"
+                            className={`${iconButtonClass} shrink-0 font-mono`}
                             aria-label="Dismiss"
                         >
                             ×

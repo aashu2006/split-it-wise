@@ -3,7 +3,7 @@
 // never be indexed.
 export const metadata = {
     title: "You're invited",
-    description: "Join a group on Split-It-Wise to split expenses and see who owes whom.",
+    description: "Join a group on Split-It-Wise to split expenses and see who pays whom.",
     robots: { index: false, follow: false },
 };
 

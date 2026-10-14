@@ -7,6 +7,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { buttonClass } from "@/components/ui/kit";
 
 /**
  * @param {Object} props
@@ -23,8 +24,8 @@ export default function ConfirmModal({
     isOpen,
     title,
     message,
-    confirmText = "Confirm",
-    cancelText = "Cancel",
+    confirmText = "confirm",
+    cancelText = "cancel",
     onConfirm,
     onCancel,
     danger = false,
@@ -34,31 +35,24 @@ export default function ConfirmModal({
         // same thing — the user backed out — so they all run onCancel. Never
         // onConfirm: dismissing a "delete this?" prompt must not delete.
         <Dialog open={isOpen} onOpenChange={(open) => !open && onCancel()}>
-            <DialogContent className="sm:max-w-md p-6" showCloseButton={false}>
+            <DialogContent showCloseButton={false}>
                 <DialogHeader>
-                    <DialogTitle className="text-xl font-bold text-foreground">
-                        {title}
-                    </DialogTitle>
-                    <DialogDescription className="text-muted-foreground">
+                    <DialogTitle>{title}</DialogTitle>
+                    <DialogDescription className="text-[15px] leading-relaxed text-muted-foreground">
                         {message}
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="flex gap-3 justify-end mt-3">
+                <div className="flex flex-col gap-2">
                     <button
-                        onClick={onCancel}
-                        className="px-4 py-2 text-foreground hover:bg-muted rounded-md"
-                    >
-                        {cancelText}
-                    </button>
-                    <button
+                        type="button"
                         onClick={onConfirm}
-                        className={`px-4 py-2 text-white rounded-md ${danger
-                            ? "bg-red-600 hover:bg-red-700"
-                            : "bg-blue-600 hover:bg-blue-700"
-                            }`}
+                        className={`${buttonClass(true)} ${danger ? "text-negative" : ""}`}
                     >
-                        {confirmText}
+                        <span>{confirmText}</span>
+                    </button>
+                    <button type="button" onClick={onCancel} className={buttonClass()}>
+                        <span>{cancelText}</span>
                     </button>
                 </div>
             </DialogContent>
