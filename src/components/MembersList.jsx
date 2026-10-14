@@ -89,6 +89,8 @@ function UpiIdField({ currentUserId, upiId, onSaved }) {
  * @param {import("@/types").MemberBalance[]} props.balances
  * @param {string} props.adminId
  * @param {string} props.currentUserId
+ * @param {string} [props.currentUserEmail]
+ *   From Firebase Auth. Profiles don't store emails, and only your own is shown.
  * @param {string} props.groupId
  * @param {(upiId: string) => void} props.onProfileUpdated
  *   Passed the saved value so the caller can patch its own profile copy.
@@ -98,6 +100,7 @@ export default function MembersList({
     balances,
     adminId,
     currentUserId,
+    currentUserEmail,
     groupId,
     onProfileUpdated,
 }) {
@@ -160,8 +163,8 @@ export default function MembersList({
                                         </span>
                                     )}
                                 </div>
-                                {member.uid === currentUserId && (
-                                    <div className="text-sm text-muted-foreground">{member.email}</div>
+                                {member.uid === currentUserId && currentUserEmail && (
+                                    <div className="text-sm text-muted-foreground">{currentUserEmail}</div>
                                 )}
                                 {member.uid === currentUserId ? (
                                     <UpiIdField

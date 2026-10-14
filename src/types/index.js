@@ -9,10 +9,13 @@
 /** @typedef {import("firebase/firestore").Timestamp} Timestamp */
 
 /**
+ * A profile in /users. Readable by any signed-in user, so it holds nothing
+ * private: there's no email here, since only its owner is ever shown it and
+ * Firebase Auth already has it.
+ *
  * @typedef {Object} User
  * @property {string} uid
  * @property {string} name
- * @property {string} email
  * @property {string} [photoURL]
  * @property {string} [upiId] e.g. "akshat@okhdfcbank", used to build UPI payment links
  * @property {Timestamp} createdAt

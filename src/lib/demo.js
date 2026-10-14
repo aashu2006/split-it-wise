@@ -41,7 +41,6 @@ const seed = () => {
         {
             uid: YOU,
             name: "Aarav Shah",
-            email: "aarav@example.com",
             photoURL: "",
             upiId: "aarav@okhdfcbank",
             createdAt: minutesAgo(60_000),
@@ -49,7 +48,6 @@ const seed = () => {
         {
             uid: PRIYA,
             name: "Priya Nair",
-            email: "priya@example.com",
             photoURL: "",
             upiId: "priya@ybl",
             createdAt: minutesAgo(50_000),
@@ -59,14 +57,12 @@ const seed = () => {
             // in SettleUpModal is reachable without editing anything.
             uid: RAHUL,
             name: "Rahul Verma",
-            email: "rahul@example.com",
             photoURL: "",
             createdAt: minutesAgo(40_000),
         },
         {
             uid: SANA,
             name: "Sana Khan",
-            email: "sana@example.com",
             photoURL: "",
             upiId: "sana@okaxis",
             createdAt: minutesAgo(30_000),
