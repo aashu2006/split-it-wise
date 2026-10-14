@@ -46,6 +46,9 @@ const securityHeaders = [
 
 /** @type {import("next").NextConfig} */
 const nextConfig = {
+    // No "X-Powered-By: Next.js": it tells a visitor nothing they need, and
+    // tells a scanner which framework's advisories to try.
+    poweredByHeader: false,
     async headers() {
         return [{ source: "/:path*", headers: securityHeaders }];
     },

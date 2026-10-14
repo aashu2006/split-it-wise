@@ -1,0 +1,47 @@
+name: Bug report
+description: Something in the app isn't working the way it should.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. **Found a security problem?** Please don't file it here; follow [SECURITY.md](https://github.com/aashu2006/split-it-wise/blob/main/SECURITY.md) instead.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What went wrong, and what did you expect instead?
+      placeholder: After editing an expense, my balance still shows the old amount.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open a group
+        2. Edit an expense's amount
+        3. ...
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where did it happen?
+      options:
+        - The live app (split-it-wise.vercel.app)
+        - A pull request preview
+        - Running locally (demo mode)
+        - Running locally (own Firebase project)
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and browser
+      placeholder: Android, Chrome 130
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots or anything else
+      description: Please blur names, amounts or UPI IDs you don't want to share publicly.
