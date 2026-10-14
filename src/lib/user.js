@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, deleteField, serverTimestamp } from "firebase/firestore";
 import { isValidUpiId } from "./upi";
 import { db } from "./firebase";
 import {
@@ -9,10 +9,17 @@ import {
 } from "./demo";
 
 /**
- * Save user to Firestore if they don't exist
+ * Create the signed-in user's profile, or tidy up an existing one
+ *
+ * Profiles are readable by every signed-in user (that's how group members see
+ * each other's names), so they hold nothing private. The email address in
+ * particular stays out: the only person shown it is its owner, who has it from
+ * Firebase Auth already. Profiles written before this still carry one, and
+ * lose it here the next time their owner signs in.
+ *
  * @param {import("firebase/auth").User} user - Firebase Auth User
  */
-export const saveUserIfNotExists = async (user) => {
+export const syncUserProfile = async (user) => {
     // The demo user is already in the seeded store.
     if (isDemoMode) return;
 
@@ -23,10 +30,11 @@ export const saveUserIfNotExists = async (user) => {
         await setDoc(userRef, {
             uid: user.uid,
             name: user.displayName || "",
-            email: user.email || "",
             photoURL: user.photoURL || "",
             createdAt: serverTimestamp(),
         });
+    } else if ("email" in snap.data()) {
+        await updateDoc(userRef, { email: deleteField() });
     }
 };
 
@@ -64,7 +72,9 @@ export const saveUpiId = async (userId, upiId) => {
     if (isDemoMode) return demoSaveUpiId(userId, trimmed);
 
     const userRef = doc(db, "users", userId);
-    await updateDoc(userRef, { upiId: trimmed });
+    // Also drops a leftover email, should syncUserProfile not have got to it:
+    // the rules refuse any profile write that still carries one.
+    await updateDoc(userRef, { upiId: trimmed, email: deleteField() });
 };
 
 /**

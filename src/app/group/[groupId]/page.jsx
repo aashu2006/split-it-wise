@@ -489,6 +489,7 @@ export default function GroupDashboard() {
                         balances={balances}
                         adminId={group.adminId}
                         currentUserId={user?.uid || ""}
+                        currentUserEmail={user?.email || ""}
                         groupId={groupId}
                         onProfileUpdated={handleProfileUpdated}
                     />

@@ -24,6 +24,12 @@
 .DS_Store
 *.pem
 
+# Firebase service-account keys, for scripts/ run with admin access. Belt and
+# braces: keep the key outside the repo in the first place.
+*service-account*.json
+*serviceAccount*.json
+*-firebase-adminsdk-*.json
+
 # claude code (local tool settings, not project config)
 .claude/
 

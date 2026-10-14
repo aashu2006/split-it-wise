@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { saveUserIfNotExists } from "@/lib/user";
+import { syncUserProfile } from "@/lib/user";
 import { GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "firebase/auth";
 import { auth, isFirebaseConfigured } from "@/lib/firebase";
 import { isDemoMode, DEMO_AUTH_USER } from "@/lib/demo";
@@ -37,7 +37,7 @@ export const AuthProvider = ({ children }) => {
             setUser(currentUser);
 
             if (currentUser) {
-                await saveUserIfNotExists(currentUser);
+                await syncUserProfile(currentUser);
             }
 
             setLoading(false);
