@@ -247,6 +247,19 @@ Covers the splitting and balance maths in `src/lib/calculations.test.js`, the pa
 a bug costs people real money, plus demo mode and its live listeners in
 `src/lib/demo.test.js`. **If you touch `calculations.js`, add a test.**
 
+The security rules have their own suite in `tests/rules/`, one file per collection,
+run against the Firestore emulator:
+
+```bash
+npm run test:rules
+```
+
+It needs Java 21+ for the emulator (`java -version` to check), and starts and stops the
+emulator by itself. **If you touch `firestore.rules`, add a test** that would fail
+without your change — a rule that's too loose fails silently everywhere else.
+
+CI runs lint, both test suites and a build on every pull request.
+
 There's no compiler to catch mistakes here, so the linter, the tests and a build are the
 whole safety net. Worth running before you open a PR:
 
@@ -267,9 +280,6 @@ duplicate work.
 
 **Most wanted**
 
-- [ ] **Security rules tests.** `firestore.rules` is the real security boundary, but it's
-      only been tested by hand against the emulator. A suite using
-      `@firebase/rules-unit-testing` that runs in CI would catch a loosened rule.
 - [ ] **Component tests.** Only the maths and demo mode are covered today.
 
 **Nice to have**
@@ -301,6 +311,7 @@ duplicate work.
    npm test
    npm run lint
    npm run build
+   npm run test:rules   # if you changed firestore.rules
    ```
 4. **Open a pull request** describing what changed and how you tested it. Screenshots help
    for UI changes.
