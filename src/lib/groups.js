@@ -208,8 +208,8 @@ export const removeMemberFromGroup = async (groupId, userId, requesterId) => {
     if (balance !== 0) {
         throw new Error(
             balance > 0
-                ? `They are still owed ₹${balance.toFixed(2)}. Settle up before removing them.`
-                : `They still owe ₹${Math.abs(balance).toFixed(2)}. Settle up before removing them.`
+                ? `they still get back ₹${balance.toFixed(2)}. settle up before removing them.`
+                : `they still need to pay ₹${Math.abs(balance).toFixed(2)}. settle up before removing them.`
         );
     }
 

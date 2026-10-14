@@ -4,7 +4,7 @@
 
 # Split-It-Wise
 
-**Owed or owing? Split bills with friends and see exactly who pays whom.**
+**Split bills, not friendships.** Add what you spent, see who pays whom, settle up.
 
 Built for hostel rooms, road trips and chai runs. Free, no ads, no trackers.
 
@@ -39,6 +39,7 @@ Built for hostel rooms, road trips and chai runs. Free, no ads, no trackers.
 - Split equally, by exact amounts, or by percentage
 - Edit or delete an expense; everyone's balances update instantly
 - Changes appear live on every phone in the group, no refresh needed
+- Dark by default, with a light mode a tap away
 
 **Settling up**
 - Balances are simplified into the fewest payments: *"Rahul pays Akshat ₹300"*
@@ -50,8 +51,8 @@ Built for hostel rooms, road trips and chai runs. Free, no ads, no trackers.
   ₹33.34 + ₹33.33 + ₹33.33, and a group's balances always sum to exactly zero.
 - **Fewest transfers.** A group of *n* people never needs more than *n − 1* payments
   to settle completely.
-- **Nobody disappears from the ledger.** Someone who leaves while still owing money
-  stays visible, tagged *left group*, until they're settled.
+- **Nobody disappears from the ledger.** Someone who leaves with money still to pay or
+  get back stays visible, tagged *left group*, until they're settled.
 - **Repayments aren't spending.** Paying a friend back never inflates the group's
   spending totals.
 

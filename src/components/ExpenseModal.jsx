@@ -1,6 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import ExpenseForm from "./ExpenseForm";
+import ConfirmModal from "./ConfirmModal";
+import { deleteExpense } from "@/lib/expenses";
+import { useToast } from "@/context/ToastContext";
+import { formatRupees, textButtonClass } from "@/components/ui/kit";
 import {
     Dialog,
     DialogContent,
@@ -10,7 +15,8 @@ import {
 } from "@/components/ui/dialog";
 
 /**
- * Adds an expense, or edits one when `expense` is given.
+ * Adds an expense, or edits one when `expense` is given. Editing also offers
+ * delete, since the expense list itself has no buttons on its rows.
  *
  * @param {Object} props
  * @param {boolean} props.isOpen
@@ -28,35 +34,77 @@ export default function ExpenseModal({
     currentUserId,
     expense = null,
 }) {
-    return (
-        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="sm:max-w-md p-6 max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                    <DialogTitle className="text-2xl font-bold text-foreground">
-                        {expense ? "Edit Expense" : "Add Expense"}
-                    </DialogTitle>
-                    {/* Not shown — the form's own labels carry the visual
-                        explanation. This is what a screen reader announces
-                        when the dialog opens, and Radix warns without it. */}
-                    <DialogDescription className="sr-only">
-                        {expense
-                            ? "Change what was spent, who paid, or how it is split."
-                            : "Record what was spent, who paid, and how it should be split."}
-                    </DialogDescription>
-                </DialogHeader>
+    const [confirmingDelete, setConfirmingDelete] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+    const { showToast } = useToast();
 
-                {/* Keyed so moving from one expense to another starts the form
-                    afresh from that expense, rather than keeping the last one's
-                    half-edited fields. */}
-                <ExpenseForm
-                    key={expense?.id ?? "new"}
-                    groupId={groupId}
-                    members={members}
-                    currentUserId={currentUserId}
-                    expense={expense}
-                    onSaved={onClose}
-                />
-            </DialogContent>
-        </Dialog>
+    const handleDelete = async () => {
+        setConfirmingDelete(false);
+        setDeleting(true);
+        try {
+            await deleteExpense(expense.id, groupId, currentUserId);
+            onClose();
+        } catch (error) {
+            showToast(error.message || "couldn't delete the expense");
+        } finally {
+            setDeleting(false);
+        }
+    };
+
+    return (
+        <>
+            <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+                <DialogContent className="max-h-[90dvh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>{expense ? "edit expense" : "add expense"}</DialogTitle>
+                        {/* Not shown — the form's own labels carry the visual
+                            explanation. This is what a screen reader announces
+                            when the dialog opens, and Radix warns without it. */}
+                        <DialogDescription className="sr-only">
+                            {expense
+                                ? "Change what was spent, who paid, or how it is split."
+                                : "Record what was spent, who paid, and how it should be split."}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {/* Keyed so moving from one expense to another starts the form
+                        afresh from that expense, rather than keeping the last one's
+                        half-edited fields. */}
+                    <ExpenseForm
+                        key={expense?.id ?? "new"}
+                        groupId={groupId}
+                        members={members}
+                        currentUserId={currentUserId}
+                        expense={expense}
+                        onSaved={onClose}
+                    />
+
+                    {expense && (
+                        <button
+                            type="button"
+                            onClick={() => setConfirmingDelete(true)}
+                            disabled={deleting}
+                            className={`${textButtonClass("text-negative")} self-start`}
+                        >
+                            {deleting ? "deleting…" : "delete expense"}
+                        </button>
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            <ConfirmModal
+                isOpen={confirmingDelete}
+                title="delete this expense?"
+                message={
+                    expense
+                        ? `${expense.description}, ${formatRupees(expense.amount)}. everyone's balances will be worked out again.`
+                        : ""
+                }
+                confirmText="delete"
+                onConfirm={handleDelete}
+                onCancel={() => setConfirmingDelete(false)}
+                danger
+            />
+        </>
     );
 }

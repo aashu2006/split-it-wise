@@ -277,30 +277,34 @@ export const calculateMemberBalances = (
 };
 
 /**
- * Format balance for display.
+ * Words for a balance, for display.
  *
- * Worded in the third person because this renders under every member's name,
- * not just the signed-in user's — "you get back" would be wrong on four rows
- * out of five.
+ * "Gets back" and "needs to pay" rather than "is owed" and "owes": plainer,
+ * and they say what the person actually has to do. Worded in the third person
+ * because this renders under every member's name, not just the signed-in
+ * user's; describeYourBalance() is the second-person version for "you".
  *
  * @param {number} balance - Balance amount
  * @returns {{ text: string, color: "green" | "red" | "gray" }} Formatted string with color indicator
  */
 export const formatBalance = (balance) => {
     if (balance > 0) {
-        return {
-            text: `Is owed ₹${balance.toFixed(2)}`,
-            color: "green",
-        };
-    } else if (balance < 0) {
-        return {
-            text: `Owes ₹${Math.abs(balance).toFixed(2)}`,
-            color: "red",
-        };
-    } else {
-        return {
-            text: "Settled",
-            color: "gray",
-        };
+        return { text: `gets back ₹${balance.toFixed(2)}`, color: "green" };
     }
+    if (balance < 0) {
+        return { text: `needs to pay ₹${Math.abs(balance).toFixed(2)}`, color: "red" };
+    }
+    return { text: "all settled", color: "gray" };
+};
+
+/**
+ * The same, addressed to the signed-in user: the caption under their balance.
+ *
+ * @param {number} balance - Balance amount
+ * @returns {string}
+ */
+export const describeYourBalance = (balance) => {
+    if (balance > 0) return "you get back";
+    if (balance < 0) return "you need to pay";
+    return "you're all settled";
 };
