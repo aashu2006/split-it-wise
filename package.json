@@ -42,7 +42,7 @@
     "@firebase/rules-unit-testing": "^5.0.2",
     "@playwright/test": "^1.64.1",
     "@tailwindcss/postcss": "^4",
-    "eslint": "^9.39.5",
+    "eslint": "^10.13.0",
     "eslint-config-next": "^16.3.2",
     "firebase-admin": "^14.5.0",
     "shadcn": "^4.19.0",
