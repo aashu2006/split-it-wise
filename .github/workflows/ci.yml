@@ -56,7 +56,7 @@ jobs:
       - run: npm run test:e2e
 
       # Traces of any failed test: open with `npx playwright show-trace`.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-traces
